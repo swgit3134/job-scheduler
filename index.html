@@ -3,109 +3,109 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>JobScheduler — Statewide Drilling</title>
+<title>Job Scheduler — Statewide Drilling</title>
 <script src="https://alcdn.msauth.net/browser/2.38.2/js/msal-browser.min.js"></script>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f5f5f5; color: #1a1a1a; min-height: 100vh; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; color: #1a1a1a; min-height: 100vh; overflow-x: hidden; }
 
-  #login-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 16px; }
-  #login-screen h1 { font-size: 24px; font-weight: 600; }
-  #login-screen p { font-size: 14px; color: #666; }
-  #login-btn { display: flex; align-items: center; gap: 10px; padding: 12px 28px; border: 1px solid #ccc; border-radius: 6px; background: white; cursor: pointer; font-size: 15px; font-weight: 500; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-  #login-btn:hover { background: #f9f9f9; box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
-  #login-btn svg { width: 20px; height: 20px; }
-  #login-error { color: #a32d2d; font-size: 13px; display: none; background: #fff0f0; padding: 8px 16px; border-radius: 6px; border: 1px solid #f5c1c1; max-width: 360px; text-align: center; }
+#login-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 14px; background: #f0f2f5; }
+#login-screen h1 { font-size: 22px; font-weight: 700; color: #1a5276; }
+#login-screen p { font-size: 13px; color: #666; }
+#login-btn { display: flex; align-items: center; gap: 10px; padding: 11px 28px; border: 1px solid #ccc; border-radius: 6px; background: white; cursor: pointer; font-size: 14px; font-weight: 500; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+#login-btn:hover { background: #f5f5f5; }
+#login-btn:disabled { opacity: 0.6; cursor: default; }
+#login-error { color: #c0392b; font-size: 13px; background: #fdf0ed; padding: 8px 16px; border-radius: 6px; border: 1px solid #f5c6c6; max-width: 360px; text-align: center; display: none; }
 
-  #app { display: none; }
+#app { display: none; flex-direction: column; height: 100vh; }
 
-  .topbar { background: #185FA5; color: white; padding: 0 20px; display: flex; align-items: center; justify-content: space-between; height: 52px; }
-  .topbar-left { display: flex; align-items: center; gap: 12px; }
-  .topbar h1 { font-size: 17px; font-weight: 600; letter-spacing: 0.01em; }
-  .topbar .user-info { font-size: 13px; opacity: 0.8; background: rgba(255,255,255,0.15); padding: 3px 10px; border-radius: 12px; }
-  .topbar-actions { display: flex; align-items: center; gap: 8px; }
+.topbar { background: #1a5276; color: white; height: 50px; display: flex; align-items: center; padding: 0 12px; gap: 8px; flex-shrink: 0; }
+.topbar-brand { display: flex; align-items: center; gap: 7px; }
+.brand-logo { width: 32px; height: 32px; }
+.topbar-title { font-size: 16px; font-weight: 700; letter-spacing: 0.01em; }
+.topbar-sep { width: 1px; height: 26px; background: rgba(255,255,255,0.25); margin: 0 4px; }
+.nav-btn { background: none; border: none; color: white; cursor: pointer; width: 30px; height: 30px; border-radius: 4px; font-size: 20px; display: flex; align-items: center; justify-content: center; line-height: 1; }
+.nav-btn:hover { background: rgba(255,255,255,0.15); }
+.month-label { font-size: 15px; font-weight: 600; min-width: 140px; text-align: center; }
+.topbar-spacer { flex: 1; }
+.last-refresh-txt { font-size: 10px; color: rgba(255,255,255,0.55); }
+.btn-booked { background: #2471a3; color: white; border: none; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 500; cursor: pointer; white-space: nowrap; }
+.btn-booked:hover { background: #1a6fa3; }
+.btn-booked.active { background: #e67e22; }
+.btn-new { background: white; color: #1a5276; border: none; padding: 7px 16px; border-radius: 6px; font-size: 13px; font-weight: 700; cursor: pointer; }
+.btn-new:hover { background: #eaf0f8; }
+.btn-refresh { background: none; border: none; color: white; cursor: pointer; font-size: 18px; width: 30px; height: 30px; border-radius: 4px; display: flex; align-items: center; justify-content: center; }
+.btn-refresh:hover { background: rgba(255,255,255,0.15); }
+.user-chip { font-size: 11px; background: rgba(255,255,255,0.15); padding: 3px 9px; border-radius: 10px; cursor: pointer; white-space: nowrap; }
+.user-chip:hover { background: rgba(255,255,255,0.25); }
 
-  .btn { padding: 7px 14px; border-radius: 6px; border: 1px solid #ccc; background: white; cursor: pointer; font-size: 13px; font-weight: 500; color: #1a1a1a; }
-  .btn:hover { background: #f5f5f5; }
-  .btn-primary { background: #185FA5; color: white; border-color: #185FA5; }
-  .btn-primary:hover { background: #0C447C; border-color: #0C447C; }
-  .btn-white { background: rgba(255,255,255,0.15); color: white; border-color: rgba(255,255,255,0.3); }
-  .btn-white:hover { background: rgba(255,255,255,0.25); }
+.cal-wrap { flex: 1; overflow: auto; }
+.cal-grid { display: grid; }
 
-  .main { padding: 20px; max-width: 1400px; margin: 0 auto; }
+.cal-corner { background: #154360; color: rgba(255,255,255,0.7); position: sticky; left: 0; z-index: 20; width: 120px; min-width: 120px; border-right: 2px solid #0e2d42; border-bottom: 2px solid #0e2d42; padding: 5px 8px; font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; display: flex; align-items: center; }
+.cal-date-cell { background: #1a5276; color: white; text-align: center; padding: 4px 2px 5px; border-right: 1px solid rgba(255,255,255,0.12); border-bottom: 2px solid #0e2d42; min-width: 92px; width: 92px; cursor: default; }
+.cal-date-cell .d-day { font-size: 11px; font-weight: 400; opacity: 0.75; }
+.cal-date-cell .d-num { font-size: 15px; font-weight: 700; line-height: 1.2; }
+.cal-date-cell .d-mon { font-size: 10px; opacity: 0.65; }
+.cal-date-cell.is-today { background: #2e86c1; }
+.cal-date-cell.is-weekend { background: #123754; }
 
-  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-bottom: 18px; }
-  .stat-card { background: white; border-radius: 8px; padding: 14px 16px; border: 1px solid #e5e5e5; }
-  .stat-card .stat-label { font-size: 12px; color: #666; margin-bottom: 4px; }
-  .stat-card .stat-value { font-size: 26px; font-weight: 600; }
+.row-label { background: #dce8f5; color: #1a4b6e; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; position: sticky; left: 0; z-index: 10; width: 120px; min-width: 120px; border-right: 2px solid #aac2dc; border-bottom: 1px solid #c2d6ea; padding: 4px 8px; display: flex; align-items: center; }
+.day-cell { min-width: 92px; width: 92px; border-right: 1px dashed #c5d8ed; border-bottom: 1px solid #c5d8ed; background: white; padding: 2px 3px; min-height: 72px; cursor: pointer; vertical-align: top; }
+.day-cell:hover { background: #f0f7ff; }
+.day-cell.is-weekend { background: #f5f8fc; }
+.day-cell.is-today { background: #fffde7; }
 
-  .toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
-  .toolbar input[type=text] { flex: 1; min-width: 180px; max-width: 300px; padding: 8px 12px; font-size: 13px; border: 1px solid #ccc; border-radius: 6px; background: white; }
-  .toolbar input[type=text]:focus { outline: none; border-color: #185FA5; box-shadow: 0 0 0 2px rgba(24,95,165,0.15); }
-  .toolbar select { padding: 8px 12px; font-size: 13px; border: 1px solid #ccc; border-radius: 6px; background: white; cursor: pointer; }
+.jcard { border-radius: 3px; padding: 3px 5px; margin-bottom: 2px; cursor: pointer; border-left: 3px solid rgba(0,0,0,0.18); }
+.jcard:hover { filter: brightness(0.9); }
+.jcard .jn { font-size: 10px; font-weight: 700; line-height: 1.3; }
+.jcard .js { font-size: 9.5px; opacity: 0.8; }
+.jcard .jc { font-size: 9px; opacity: 0.65; font-style: italic; }
 
-  .jobs-table-wrap { background: white; border: 1px solid #e5e5e5; border-radius: 10px; overflow: hidden; }
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th { text-align: left; padding: 11px 14px; font-weight: 600; font-size: 11px; color: #666; background: #fafafa; border-bottom: 1px solid #e5e5e5; text-transform: uppercase; letter-spacing: 0.04em; }
-  td { padding: 11px 14px; border-bottom: 1px solid #f0f0f0; color: #1a1a1a; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  tr:last-child td { border-bottom: none; }
-  tr:hover td { background: #f8fbff; }
+.modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 16px; }
+.modal-box { background: white; border-radius: 10px; width: 100%; max-width: 580px; max-height: 90vh; overflow-y: auto; padding: 22px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
+.modal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.modal-head h2 { font-size: 17px; font-weight: 600; }
+.modal-x { background: none; border: none; font-size: 20px; cursor: pointer; color: #888; padding: 2px 6px; border-radius: 4px; }
+.modal-x:hover { background: #f0f0f0; }
+.fgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; }
+.fcol2 { grid-column: 1/-1; }
+.fg label { display: block; font-size: 11px; font-weight: 600; color: #555; margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.03em; }
+.fg input, .fg select, .fg textarea { width: 100%; padding: 7px 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 13px; font-family: inherit; }
+.fg input:focus, .fg select:focus, .fg textarea:focus { outline: none; border-color: #2471a3; box-shadow: 0 0 0 2px rgba(36,113,163,0.15); }
+.fg input[type=color] { height: 36px; padding: 2px 4px; cursor: pointer; }
+.fg textarea { resize: vertical; min-height: 64px; }
+.cbrow { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
+.cbrow input[type=checkbox] { width: 15px; height: 15px; accent-color: #1a5276; flex-shrink: 0; }
+.cbrow label { font-size: 13px; font-weight: 400; text-transform: none; letter-spacing: 0; margin-bottom: 0; color: #333; cursor: pointer; }
+.mfoot { display: flex; justify-content: space-between; align-items: center; margin-top: 16px; padding-top: 14px; border-top: 1px solid #eee; }
+.btn-sv { background: #1a5276; color: white; border: none; padding: 8px 20px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.btn-sv:hover { background: #154360; }
+.btn-sv:disabled { opacity: 0.6; cursor: default; }
+.btn-cn { background: none; border: 1px solid #ccc; padding: 8px 14px; border-radius: 6px; font-size: 13px; cursor: pointer; color: #555; }
+.btn-cn:hover { background: #f5f5f5; }
+.btn-dl { background: none; border: none; color: #c0392b; font-size: 13px; cursor: pointer; }
+.btn-dl:hover { text-decoration: underline; }
 
-  .badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; }
-  .badge-scheduled { background: #E6F1FB; color: #185FA5; }
-  .badge-inprogress { background: #FFF3E0; color: #E65100; }
-  .badge-completed { background: #E8F5E9; color: #2E7D32; }
-  .badge-cancelled { background: #FFEBEE; color: #C62828; }
-  .badge-default { background: #f5f5f5; color: #666; }
+.toast { position: fixed; bottom: 20px; right: 20px; padding: 11px 18px; border-radius: 7px; font-size: 13px; font-weight: 500; z-index: 200; display: none; box-shadow: 0 3px 12px rgba(0,0,0,0.15); }
+.toast.success { background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; }
+.toast.error { background: #ffebee; color: #c62828; border: 1px solid #ef9a9a; }
 
-  .color-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: middle; border: 1px solid rgba(0,0,0,0.15); }
+.spin-wrap { position: fixed; inset: 0; background: rgba(255,255,255,0.75); display: flex; align-items: center; justify-content: center; z-index: 50; flex-direction: column; gap: 10px; }
+.spinner { width: 34px; height: 34px; border: 3px solid #cdd8e8; border-top-color: #1a5276; border-radius: 50%; animation: sp 0.7s linear infinite; }
+@keyframes sp { to { transform: rotate(360deg); } }
 
-  .action-btns { display: flex; gap: 4px; }
-  .icon-btn { background: none; border: none; cursor: pointer; color: #888; padding: 5px 7px; border-radius: 5px; font-size: 14px; line-height: 1; }
-  .icon-btn:hover { background: #f0f0f0; color: #333; }
-
-  .empty-state { text-align: center; padding: 56px 20px; color: #999; font-size: 14px; }
-  .loading { text-align: center; padding: 40px; color: #999; font-size: 14px; }
-  .spinner { display: inline-block; width: 18px; height: 18px; border: 2px solid #ddd; border-top-color: #185FA5; border-radius: 50%; animation: spin 0.7s linear infinite; margin-right: 8px; vertical-align: middle; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  /* Modal */
-  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 20px; }
-  .modal { background: white; border-radius: 12px; width: 100%; max-width: 580px; max-height: 90vh; overflow-y: auto; padding: 28px; box-shadow: 0 8px 32px rgba(0,0,0,0.18); }
-  .modal h2 { font-size: 18px; font-weight: 600; margin-bottom: 20px; color: #1a1a1a; }
-  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-  .form-full { grid-column: 1 / -1; }
-  .form-group label { display: block; font-size: 12px; color: #555; margin-bottom: 5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
-  .form-group input[type=text],
-  .form-group input[type=datetime-local],
-  .form-group select,
-  .form-group textarea { width: 100%; padding: 8px 12px; border: 1px solid #ccc; border-radius: 6px; background: white; color: #1a1a1a; font-size: 13px; font-family: inherit; }
-  .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: #185FA5; box-shadow: 0 0 0 2px rgba(24,95,165,0.15); }
-  .form-group input[type=color] { width: 100%; height: 38px; padding: 2px 4px; border: 1px solid #ccc; border-radius: 6px; cursor: pointer; }
-  .form-group textarea { resize: vertical; min-height: 76px; }
-  .checkbox-row { display: flex; align-items: center; gap: 9px; padding: 6px 0; }
-  .checkbox-row input[type=checkbox] { width: 16px; height: 16px; cursor: pointer; accent-color: #185FA5; }
-  .checkbox-row label { font-size: 13px; color: #333; font-weight: 400; text-transform: none; letter-spacing: 0; margin-bottom: 0; cursor: pointer; }
-  .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 22px; padding-top: 16px; border-top: 1px solid #eee; }
-
-  .toast { position: fixed; bottom: 24px; right: 24px; background: white; border: 1px solid #ccc; border-radius: 8px; padding: 12px 20px; font-size: 13px; box-shadow: 0 4px 16px rgba(0,0,0,0.12); z-index: 200; display: none; animation: slideup 0.2s ease; }
-  @keyframes slideup { from { opacity:0; transform: translateY(8px); } to { opacity:1; transform: translateY(0); } }
-  .toast.success { border-color: #2E7D32; color: #2E7D32; background: #E8F5E9; }
-  .toast.error { border-color: #C62828; color: #C62828; background: #FFEBEE; }
-
-  @media (max-width: 640px) {
-    .form-grid { grid-template-columns: 1fr; }
-  }
+@media (max-width: 600px) { .fgrid { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
 
 <div id="login-screen">
-  <svg width="48" height="48" viewBox="0 0 40 40" fill="none"><rect width="40" height="40" rx="8" fill="#185FA5"/><rect x="6" y="6" width="12" height="12" fill="white" opacity="0.9"/><rect x="22" y="6" width="12" height="12" fill="white" opacity="0.6"/><rect x="6" y="22" width="12" height="12" fill="white" opacity="0.6"/><rect x="22" y="22" width="12" height="12" fill="white" opacity="0.9"/></svg>
-  <h1>JobScheduler</h1>
-  <p>Statewide Drilling — sign in with your Microsoft account</p>
+  <img src="https://www.statewidedrilling.com.au/wp-content/uploads/2019/06/statewide-logo.png" style="height:48px;object-fit:contain" onerror="this.style.display='none'">
+  <h1>Job Scheduler</h1>
+  <p>Statewide Geotechnical — sign in with your Microsoft account</p>
   <button id="login-btn" onclick="signIn()">
-    <svg viewBox="0 0 21 21" xmlns="http://www.w3.org/2000/svg"><rect x="1" y="1" width="9" height="9" fill="#f25022"/><rect x="11" y="1" width="9" height="9" fill="#7fba00"/><rect x="1" y="11" width="9" height="9" fill="#00a4ef"/><rect x="11" y="11" width="9" height="9" fill="#ffb900"/></svg>
+    <svg viewBox="0 0 21 21" width="20" height="20"><rect x="1" y="1" width="9" height="9" fill="#f25022"/><rect x="11" y="1" width="9" height="9" fill="#7fba00"/><rect x="1" y="11" width="9" height="9" fill="#00a4ef"/><rect x="11" y="11" width="9" height="9" fill="#ffb900"/></svg>
     Sign in with Microsoft
   </button>
   <p id="login-error"></p>
@@ -113,98 +113,58 @@
 
 <div id="app">
   <div class="topbar">
-    <div class="topbar-left">
-      <svg width="26" height="26" viewBox="0 0 40 40" fill="none"><rect width="40" height="40" rx="8" fill="rgba(255,255,255,0.2)"/><rect x="6" y="6" width="12" height="12" fill="white" opacity="0.9"/><rect x="22" y="6" width="12" height="12" fill="white" opacity="0.6"/><rect x="6" y="22" width="12" height="12" fill="white" opacity="0.6"/><rect x="22" y="22" width="12" height="12" fill="white" opacity="0.9"/></svg>
-      <h1>JobScheduler</h1>
+    <div class="topbar-brand">
+      <svg class="brand-logo" viewBox="0 0 32 32"><rect width="32" height="32" rx="4" fill="rgba(255,255,255,0.15)"/><text x="4" y="22" font-size="16" font-weight="bold" fill="white" font-family="Arial">SW</text></svg>
+      <span class="topbar-title">Job Scheduler</span>
     </div>
-    <div class="topbar-actions">
-      <span class="user-info" id="user-name"></span>
-      <button class="btn btn-primary" style="background:rgba(255,255,255,0.2);border-color:rgba(255,255,255,0.3);color:white" onclick="openAddModal()">+ New Job</button>
-      <button class="btn btn-white" onclick="signOut()">Sign out</button>
-    </div>
+    <div class="topbar-sep"></div>
+    <button class="nav-btn" onclick="shiftWeeks(-1)">&#8249;</button>
+    <div class="month-label" id="month-label">May 2026</div>
+    <button class="nav-btn" onclick="shiftWeeks(1)">&#8250;</button>
+    <div class="topbar-spacer"></div>
+    <span class="last-refresh-txt" id="last-refresh"></span>
+    <button class="btn-new" onclick="openAddModal(null,null)">New</button>
+    <button class="btn-booked" id="filter-btn" onclick="toggleFilter()">Fieldwork to be booked</button>
+    <button class="btn-refresh" onclick="loadJobs()" title="Refresh">&#8635;</button>
+    <span class="user-chip" id="user-name" onclick="signOut()" title="Sign out"></span>
   </div>
 
-  <div class="main">
-    <div class="stats">
-      <div class="stat-card"><div class="stat-label">Total Jobs</div><div class="stat-value" id="stat-total" style="color:#185FA5">—</div></div>
-      <div class="stat-card"><div class="stat-label">Scheduled</div><div class="stat-value" id="stat-scheduled" style="color:#1565C0">—</div></div>
-      <div class="stat-card"><div class="stat-label">In Progress</div><div class="stat-value" id="stat-inprogress" style="color:#E65100">—</div></div>
-      <div class="stat-card"><div class="stat-label">Completed</div><div class="stat-value" id="stat-completed" style="color:#2E7D32">—</div></div>
-      <div class="stat-card"><div class="stat-label">Cancelled</div><div class="stat-value" id="stat-cancelled" style="color:#C62828">—</div></div>
-    </div>
-
-    <div class="toolbar">
-      <input type="text" id="search-input" placeholder="🔍  Search jobs..." oninput="renderTable()">
-      <select id="filter-status" onchange="renderTable()">
-        <option value="">All statuses</option>
-        <option>Scheduled</option>
-        <option>In Progress</option>
-        <option>Completed</option>
-        <option>Cancelled</option>
-      </select>
-      <select id="filter-crew" onchange="renderTable()">
-        <option value="">All crews</option>
-      </select>
-      <button class="btn btn-primary" onclick="loadJobs()">↻ Refresh</button>
-    </div>
-
-    <div class="jobs-table-wrap">
-      <div id="table-loading" class="loading"><span class="spinner"></span>Loading jobs from SharePoint...</div>
-      <table id="jobs-table" style="display:none">
-        <thead>
-          <tr>
-            <th style="width:18%">Title</th>
-            <th style="width:9%">Job #</th>
-            <th style="width:11%">Status</th>
-            <th style="width:10%">Type</th>
-            <th style="width:10%">Machine</th>
-            <th style="width:10%">Suburb</th>
-            <th style="width:9%">Crew</th>
-            <th style="width:12%">Start Date</th>
-            <th style="width:11%">End Date</th>
-            <th style="width:8%">Actions</th>
-          </tr>
-        </thead>
-        <tbody id="jobs-body"></tbody>
-      </table>
-      <div id="empty-state" class="empty-state" style="display:none">
-        <div style="font-size:32px;margin-bottom:8px">📋</div>
-        No jobs found matching your filters.
-      </div>
-    </div>
+  <div class="cal-wrap">
+    <div class="cal-grid" id="cal-grid"></div>
   </div>
 </div>
 
-<!-- Add/Edit Modal -->
-<div id="modal-overlay" class="modal-overlay" style="display:none" onclick="closeModalOutside(event)">
-  <div class="modal">
-    <h2 id="modal-title">New Job</h2>
-    <div class="form-grid">
-      <div class="form-group form-full"><label>Title *</label><input type="text" id="f-title" placeholder="Job title"></div>
-      <div class="form-group"><label>Job Number</label><input type="text" id="f-jobnumber" placeholder="e.g. JOB-001"></div>
-      <div class="form-group"><label>Status</label>
-        <select id="f-status">
-          <option>Scheduled</option><option>In Progress</option><option>Completed</option><option>Cancelled</option>
-        </select>
-      </div>
-      <div class="form-group"><label>Job Type</label><input type="text" id="f-jobtype" placeholder="e.g. Drilling"></div>
-      <div class="form-group"><label>Machine</label><input type="text" id="f-machine" placeholder="Machine name"></div>
-      <div class="form-group"><label>Suburb</label><input type="text" id="f-suburb" placeholder="Suburb"></div>
-      <div class="form-group"><label>Crew</label><input type="text" id="f-crew" placeholder="Crew name"></div>
-      <div class="form-group"><label>Color Name</label><input type="text" id="f-color" placeholder="e.g. Blue"></div>
-      <div class="form-group"><label>Color Code</label><input type="color" id="f-colorcode" value="#185FA5"></div>
-      <div class="form-group"><label>Start Date</label><input type="datetime-local" id="f-startdate"></div>
-      <div class="form-group"><label>End Date</label><input type="datetime-local" id="f-enddate"></div>
-      <div class="form-group form-full"><label>Notes</label><textarea id="f-notes" placeholder="Additional notes..."></textarea></div>
-      <div class="form-group form-full">
-        <div class="checkbox-row"><input type="checkbox" id="f-triggerflow"><label for="f-triggerflow">Trigger Flow</label></div>
-        <div class="checkbox-row"><input type="checkbox" id="f-clientapproved"><label for="f-clientapproved">Client has approved site access</label></div>
-        <div class="checkbox-row"><input type="checkbox" id="f-booking"><label for="f-booking">Booking the subcontractor for service clearance</label></div>
+<!-- MODAL -->
+<div id="modal-bg" class="modal-bg" style="display:none" onclick="bgClose(event)">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h2 id="m-title">New Job</h2>
+      <button class="modal-x" onclick="closeModal()">&#10005;</button>
+    </div>
+    <div class="fgrid">
+      <div class="fg fcol2"><label>Title *</label><input id="f-title" placeholder="Job title"></div>
+      <div class="fg"><label>Job Number</label><input id="f-jobnumber" placeholder="e.g. 31765"></div>
+      <div class="fg"><label>Status</label><select id="f-status"><option>Scheduled</option><option>In Progress</option><option>Completed</option><option>Cancelled</option></select></div>
+      <div class="fg"><label>Job Type</label><input id="f-jobtype" placeholder="e.g. E/PROBE"></div>
+      <div class="fg"><label>Machine</label><input id="f-machine" placeholder="Machine/Row"></div>
+      <div class="fg"><label>Suburb</label><input id="f-suburb" placeholder="Suburb"></div>
+      <div class="fg"><label>Crew</label><input id="f-crew" placeholder="Crew name"></div>
+      <div class="fg"><label>Color</label><input type="color" id="f-colorcode" value="#a8d5f5"></div>
+      <div class="fg"><label>Start Date</label><input type="datetime-local" id="f-startdate"></div>
+      <div class="fg"><label>End Date</label><input type="datetime-local" id="f-enddate"></div>
+      <div class="fg fcol2"><label>Notes</label><textarea id="f-notes" placeholder="Notes..."></textarea></div>
+      <div class="fg fcol2">
+        <div class="cbrow"><input type="checkbox" id="f-tf"><label for="f-tf">Trigger Flow</label></div>
+        <div class="cbrow"><input type="checkbox" id="f-ca"><label for="f-ca">Client has approved site access</label></div>
+        <div class="cbrow"><input type="checkbox" id="f-bk"><label for="f-bk">Booking the subcontractor for service clearance</label></div>
       </div>
     </div>
-    <div class="modal-actions">
-      <button class="btn" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" id="save-btn" onclick="saveJob()">Save Job</button>
+    <div class="mfoot">
+      <button class="btn-dl" id="del-btn" style="display:none" onclick="deleteJob()">🗑 Delete</button>
+      <div style="display:flex;gap:8px;margin-left:auto">
+        <button class="btn-cn" onclick="closeModal()">Cancel</button>
+        <button class="btn-sv" id="save-btn" onclick="saveJob()">Save Job</button>
+      </div>
     </div>
   </div>
 </div>
@@ -214,298 +174,293 @@
 <script>
 const CLIENT_ID = 'b2580766-8f12-4e30-8180-113536a3bd5d';
 const TENANT_ID = '4ef29fa0-9468-4620-8514-1cf4538b9702';
-const SITE_URL = 'statewidedrilling.sharepoint.com:/sites/AppsPortal:';
+const SITE_URL  = 'statewidedrilling.sharepoint.com:/sites/AppsPortal:';
 const LIST_NAME = 'JobScheduler';
 
-const msalConfig = {
-  auth: {
-    clientId: CLIENT_ID,
-    authority: `https://login.microsoftonline.com/${TENANT_ID}`,
-    redirectUri: window.location.origin + window.location.pathname
-  },
+const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const LONG_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const DEFAULT_MACHINES = ['GEOPROBE','GEOPROBE','HANJIN (TRACK)','COM 305','E/PROBE','DINGO','Site Inspection','Yard / Leave'];
+
+const msalCfg = {
+  auth: { clientId: CLIENT_ID, authority: `https://login.microsoftonline.com/${TENANT_ID}`, redirectUri: window.location.origin + window.location.pathname },
   cache: { cacheLocation: 'sessionStorage', storeAuthStateInCookie: false }
 };
+const SCOPES = ['Sites.ReadWrite.All','User.Read'];
+let msalInst=null, allJobs=[], editId=null, siteId=null, weekOff=0, filterOn=false;
 
-const scopes = ['Sites.ReadWrite.All', 'User.Read'];
-let msalInstance = null, allJobs = [], editingId = null, siteId = null;
-
+// ── AUTH ──────────────────────────────────────────────────────────
 async function initMsal() {
   try {
-    // Disable button until MSAL is ready
     const btn = document.getElementById('login-btn');
-    btn.disabled = true;
-    btn.textContent = 'Loading...';
-
-    msalInstance = new msal.PublicClientApplication(msalConfig);
-    await msalInstance.initialize();
-
-    // Handle redirect response (called after Microsoft login redirects back)
-    const resp = await msalInstance.handleRedirectPromise();
-    if (resp && resp.account) { onSignedIn(resp.account); return; }
-
-    // Already signed in from a previous session
-    const accounts = msalInstance.getAllAccounts();
-    if (accounts.length > 0) { onSignedIn(accounts[0]); return; }
-
-    // Ready to sign in
+    btn.disabled = true; btn.textContent = 'Loading...';
+    msalInst = new msal.PublicClientApplication(msalCfg);
+    await msalInst.initialize();
+    const r = await msalInst.handleRedirectPromise();
+    if (r?.account) { onIn(r.account); return; }
+    const accs = msalInst.getAllAccounts();
+    if (accs.length) { onIn(accs[0]); return; }
     btn.disabled = false;
-    btn.innerHTML = `<svg viewBox="0 0 21 21" width="20" height="20" xmlns="http://www.w3.org/2000/svg"><rect x="1" y="1" width="9" height="9" fill="#f25022"/><rect x="11" y="1" width="9" height="9" fill="#7fba00"/><rect x="1" y="11" width="9" height="9" fill="#00a4ef"/><rect x="11" y="11" width="9" height="9" fill="#ffb900"/></svg> Sign in with Microsoft`;
-  } catch(e) {
-    showLoginError('Initialisation error: ' + e.message);
-    const btn = document.getElementById('login-btn');
-    btn.disabled = false;
-    btn.innerHTML = `<svg viewBox="0 0 21 21" width="20" height="20" xmlns="http://www.w3.org/2000/svg"><rect x="1" y="1" width="9" height="9" fill="#f25022"/><rect x="11" y="1" width="9" height="9" fill="#7fba00"/><rect x="1" y="11" width="9" height="9" fill="#00a4ef"/><rect x="11" y="11" width="9" height="9" fill="#ffb900"/></svg> Sign in with Microsoft`;
-  }
+    btn.innerHTML = `<svg viewBox="0 0 21 21" width="20" height="20"><rect x="1" y="1" width="9" height="9" fill="#f25022"/><rect x="11" y="1" width="9" height="9" fill="#7fba00"/><rect x="1" y="11" width="9" height="9" fill="#00a4ef"/><rect x="11" y="11" width="9" height="9" fill="#ffb900"/></svg> Sign in with Microsoft`;
+  } catch(e) { loginErr('Init error: '+e.message); document.getElementById('login-btn').disabled=false; }
 }
-
 async function signIn() {
-  if (!msalInstance) { showLoginError('Still loading, please wait a moment and try again.'); return; }
-  try {
-    document.getElementById('login-error').style.display = 'none';
-    document.getElementById('login-btn').disabled = true;
-    document.getElementById('login-btn').textContent = 'Redirecting...';
-    await msalInstance.loginRedirect({ scopes });
-  } catch(e) {
-    showLoginError('Sign-in failed: ' + e.message);
-    document.getElementById('login-btn').disabled = false;
-    document.getElementById('login-btn').innerHTML = `<svg viewBox="0 0 21 21" width="20" height="20" xmlns="http://www.w3.org/2000/svg"><rect x="1" y="1" width="9" height="9" fill="#f25022"/><rect x="11" y="1" width="9" height="9" fill="#7fba00"/><rect x="1" y="11" width="9" height="9" fill="#00a4ef"/><rect x="11" y="11" width="9" height="9" fill="#ffb900"/></svg> Sign in with Microsoft`;
-  }
+  if (!msalInst) return;
+  try { document.getElementById('login-btn').disabled=true; document.getElementById('login-btn').textContent='Redirecting...'; await msalInst.loginRedirect({scopes:SCOPES}); }
+  catch(e) { loginErr('Sign-in failed: '+e.message); document.getElementById('login-btn').disabled=false; }
 }
-
-function signOut() {
-  msalInstance.logoutRedirect({ postLogoutRedirectUri: window.location.href });
+function signOut() { if(confirm('Sign out?')) msalInst.logoutRedirect(); }
+function loginErr(m) { const el=document.getElementById('login-error'); el.textContent=m; el.style.display='block'; }
+async function token() {
+  const a=msalInst.getAllAccounts();
+  try { return (await msalInst.acquireTokenSilent({account:a[0],scopes:SCOPES})).accessToken; }
+  catch { await msalInst.acquireTokenRedirect({scopes:SCOPES}); }
 }
-
-function showLoginError(msg) {
-  const el = document.getElementById('login-error');
-  el.textContent = msg;
-  el.style.display = 'block';
+async function gfetch(method,path,body) {
+  const t=await token();
+  const o={method,headers:{Authorization:`Bearer ${t}`,'Content-Type':'application/json'}};
+  if(body) o.body=JSON.stringify(body);
+  const r=await fetch(`https://graph.microsoft.com/v1.0${path}`,o);
+  if(!r.ok) throw new Error(await r.text());
+  return r.status===204?{}:r.json();
 }
-
-async function getToken() {
-  const accounts = msalInstance.getAllAccounts();
-  const req = { account: accounts[0], scopes };
-  try {
-    const resp = await msalInstance.acquireTokenSilent(req);
-    return resp.accessToken;
-  } catch {
-    await msalInstance.acquireTokenRedirect(req);
-  }
-}
-
-async function graph(method, path, body) {
-  const token = await getToken();
-  const opts = { method, headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } };
-  if (body) opts.body = JSON.stringify(body);
-  const r = await fetch(`https://graph.microsoft.com/v1.0${path}`, opts);
-  if (!r.ok) { const txt = await r.text(); throw new Error(txt); }
-  if (r.status === 204) return {};
-  return r.json();
-}
-
-async function getSiteId() {
-  if (siteId) return siteId;
-  const data = await graph('GET', `/sites/${SITE_URL}`);
-  siteId = data.id;
+async function getSite() {
+  if(!siteId) siteId=(await gfetch('GET',`/sites/${SITE_URL}`)).id;
   return siteId;
 }
 
+// ── DATA ──────────────────────────────────────────────────────────
 async function loadJobs() {
-  document.getElementById('table-loading').style.display = 'block';
-  document.getElementById('jobs-table').style.display = 'none';
-  document.getElementById('empty-state').style.display = 'none';
+  spin(true);
   try {
-    const sid = await getSiteId();
-    const data = await graph('GET', `/sites/${sid}/lists/${LIST_NAME}/items?expand=fields&$top=999`);
-    allJobs = data.value.map(i => ({ id: i.id, ...i.fields }));
-    updateStats();
-    updateCrewFilter();
-    renderTable();
-  } catch(e) { showToast('Error loading jobs: ' + e.message, 'error'); }
-  document.getElementById('table-loading').style.display = 'none';
+    const sid=await getSite();
+    const d=await gfetch('GET',`/sites/${sid}/lists/${LIST_NAME}/items?expand=fields&$top=999`);
+    allJobs=d.value.map(i=>({id:i.id,...i.fields}));
+    document.getElementById('last-refresh').textContent='Last Refresh: '+new Date().toLocaleString('en-AU',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+    renderCal();
+  } catch(e) { toast('Error: '+e.message,'error'); }
+  spin(false);
 }
 
-function updateStats() {
-  document.getElementById('stat-total').textContent = allJobs.length;
-  document.getElementById('stat-scheduled').textContent = allJobs.filter(j => j.Status === 'Scheduled').length;
-  document.getElementById('stat-inprogress').textContent = allJobs.filter(j => j.Status === 'In Progress').length;
-  document.getElementById('stat-completed').textContent = allJobs.filter(j => j.Status === 'Completed').length;
-  document.getElementById('stat-cancelled').textContent = allJobs.filter(j => j.Status === 'Cancelled').length;
-}
-
-function updateCrewFilter() {
-  const crews = [...new Set(allJobs.map(j => j.Crew).filter(Boolean))].sort();
-  const sel = document.getElementById('filter-crew');
-  const cur = sel.value;
-  sel.innerHTML = '<option value="">All crews</option>' + crews.map(c => `<option${c===cur?' selected':''}>${c}</option>`).join('');
-}
-
-function renderTable() {
-  const search = document.getElementById('search-input').value.toLowerCase();
-  const statusF = document.getElementById('filter-status').value;
-  const crewF = document.getElementById('filter-crew').value;
-  const jobs = allJobs.filter(j => {
-    if (statusF && j.Status !== statusF) return false;
-    if (crewF && j.Crew !== crewF) return false;
-    if (search) {
-      const hay = [j.Title, j.JobNumber, j.Suburb, j.Machine, j.JobType, j.Crew, j.Notes].join(' ').toLowerCase();
-      if (!hay.includes(search)) return false;
-    }
-    return true;
-  });
-
-  const tbody = document.getElementById('jobs-body');
-  document.getElementById('table-loading').style.display = 'none';
-
-  if (jobs.length === 0) {
-    document.getElementById('jobs-table').style.display = 'none';
-    document.getElementById('empty-state').style.display = 'block';
-    return;
-  }
-  document.getElementById('jobs-table').style.display = 'table';
-  document.getElementById('empty-state').style.display = 'none';
-
-  tbody.innerHTML = jobs.map(j => {
-    const sc = { 'Scheduled':'badge-scheduled','In Progress':'badge-inprogress','Completed':'badge-completed','Cancelled':'badge-cancelled' }[j.Status] || 'badge-default';
-    const dot = j.ColorCode ? `<span class="color-dot" style="background:${j.ColorCode}"></span>` : '';
-    const sd = j.Start_x0020_Date ? new Date(j.Start_x0020_Date).toLocaleDateString('en-AU') : '—';
-    const ed = j.End_x0020_Date ? new Date(j.End_x0020_Date).toLocaleDateString('en-AU') : '—';
-    return `<tr>
-      <td title="${esc(j.Title)}">${dot}${esc(j.Title)||'—'}</td>
-      <td>${esc(j.JobNumber)||'—'}</td>
-      <td><span class="badge ${sc}">${esc(j.Status)||'—'}</span></td>
-      <td title="${esc(j.JobType)}">${esc(j.JobType)||'—'}</td>
-      <td title="${esc(j.Machine)}">${esc(j.Machine)||'—'}</td>
-      <td title="${esc(j.Suburb)}">${esc(j.Suburb)||'—'}</td>
-      <td>${esc(j.Crew)||'—'}</td>
-      <td>${sd}</td>
-      <td>${ed}</td>
-      <td><div class="action-btns">
-        <button class="icon-btn" title="Edit" onclick="openEditModal('${j.id}')">✏️</button>
-        <button class="icon-btn" title="Delete" onclick="deleteJob('${j.id}','${esc(j.Title||'').replace(/'/g,"\\'")}')">🗑️</button>
-      </div></td>
-    </tr>`;
-  }).join('');
-}
-
-function esc(s) {
-  if (!s) return '';
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-function openAddModal() {
-  editingId = null;
-  document.getElementById('modal-title').textContent = 'New Job';
-  document.getElementById('save-btn').textContent = 'Save Job';
-  clearForm();
-  document.getElementById('modal-overlay').style.display = 'flex';
-}
-
-function openEditModal(id) {
-  const j = allJobs.find(x => x.id === id);
-  if (!j) return;
-  editingId = id;
-  document.getElementById('modal-title').textContent = 'Edit Job';
-  document.getElementById('save-btn').textContent = 'Update Job';
-  document.getElementById('f-title').value = j.Title || '';
-  document.getElementById('f-jobnumber').value = j.JobNumber || '';
-  document.getElementById('f-status').value = j.Status || 'Scheduled';
-  document.getElementById('f-jobtype').value = j.JobType || '';
-  document.getElementById('f-machine').value = j.Machine || '';
-  document.getElementById('f-suburb').value = j.Suburb || '';
-  document.getElementById('f-crew').value = j.Crew || '';
-  document.getElementById('f-color').value = j.Color || '';
-  document.getElementById('f-colorcode').value = j.ColorCode || '#185FA5';
-  document.getElementById('f-notes').value = j.Notes || '';
-  document.getElementById('f-triggerflow').checked = !!j.TriggerFlow;
-  document.getElementById('f-clientapproved').checked = !!j['Client_x0020_has_x0020_approved_x0020_site_x0020_access'];
-  document.getElementById('f-booking').checked = !!j['Booking_x0020_the_x0020_subcontractor_x0020_for_x0020_service_x0020_clearance'];
-  if (j.Start_x0020_Date) document.getElementById('f-startdate').value = j.Start_x0020_Date.slice(0,16);
-  else document.getElementById('f-startdate').value = '';
-  if (j.End_x0020_Date) document.getElementById('f-enddate').value = j.End_x0020_Date.slice(0,16);
-  else document.getElementById('f-enddate').value = '';
-  document.getElementById('modal-overlay').style.display = 'flex';
-}
-
-function clearForm() {
-  ['f-title','f-jobnumber','f-jobtype','f-machine','f-suburb','f-crew','f-color','f-notes','f-startdate','f-enddate'].forEach(id => document.getElementById(id).value = '');
-  document.getElementById('f-status').value = 'Scheduled';
-  document.getElementById('f-colorcode').value = '#185FA5';
-  ['f-triggerflow','f-clientapproved','f-booking'].forEach(id => document.getElementById(id).checked = false);
-}
-
-function closeModal() { document.getElementById('modal-overlay').style.display = 'none'; }
-function closeModalOutside(e) { if (e.target === document.getElementById('modal-overlay')) closeModal(); }
-
-async function saveJob() {
-  const title = document.getElementById('f-title').value.trim();
-  if (!title) { showToast('Title is required', 'error'); return; }
-
-  const fields = {
-    Title: title,
-    JobNumber: document.getElementById('f-jobnumber').value,
-    Status: document.getElementById('f-status').value,
-    JobType: document.getElementById('f-jobtype').value,
-    Machine: document.getElementById('f-machine').value,
-    Suburb: document.getElementById('f-suburb').value,
-    Crew: document.getElementById('f-crew').value,
-    Color: document.getElementById('f-color').value,
-    ColorCode: document.getElementById('f-colorcode').value,
-    Notes: document.getElementById('f-notes').value,
-    TriggerFlow: document.getElementById('f-triggerflow').checked,
-    'Client_x0020_has_x0020_approved_x0020_site_x0020_access': document.getElementById('f-clientapproved').checked,
-    'Booking_x0020_the_x0020_subcontractor_x0020_for_x0020_service_x0020_clearance': document.getElementById('f-booking').checked,
-  };
-  const sd = document.getElementById('f-startdate').value;
-  const ed = document.getElementById('f-enddate').value;
-  if (sd) fields['Start_x0020_Date'] = new Date(sd).toISOString();
-  if (ed) fields['End_x0020_Date'] = new Date(ed).toISOString();
-
-  const btn = document.getElementById('save-btn');
-  btn.textContent = 'Saving...';
-  btn.disabled = true;
-
-  try {
-    const sid = await getSiteId();
-    if (editingId) {
-      await graph('PATCH', `/sites/${sid}/lists/${LIST_NAME}/items/${editingId}/fields`, fields);
-      showToast('Job updated ✓', 'success');
-    } else {
-      await graph('POST', `/sites/${sid}/lists/${LIST_NAME}/items`, { fields });
-      showToast('Job created ✓', 'success');
-    }
-    closeModal();
-    loadJobs();
-  } catch(e) { showToast('Error: ' + e.message, 'error'); }
-
-  btn.textContent = editingId ? 'Update Job' : 'Save Job';
-  btn.disabled = false;
-}
-
-async function deleteJob(id, title) {
-  if (!confirm(`Delete job "${title}"?\n\nThis cannot be undone.`)) return;
-  try {
-    const sid = await getSiteId();
-    await graph('DELETE', `/sites/${sid}/lists/${LIST_NAME}/items/${id}`);
-    showToast('Job deleted', 'success');
-    loadJobs();
-  } catch(e) { showToast('Error deleting: ' + e.message, 'error'); }
-}
-
-function onSignedIn(account) {
-  document.getElementById('login-screen').style.display = 'none';
-  document.getElementById('app').style.display = 'block';
-  document.getElementById('user-name').textContent = account.name || account.username;
+function onIn(acc) {
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app').style.display='flex';
+  document.getElementById('user-name').textContent=acc.name||acc.username;
   loadJobs();
 }
 
-function showToast(msg, type='success') {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.className = 'toast ' + type;
-  t.style.display = 'block';
-  clearTimeout(t._timer);
-  t._timer = setTimeout(() => t.style.display = 'none', 3500);
+// ── CALENDAR ──────────────────────────────────────────────────────
+function getWeekDates() {
+  const today=new Date(); today.setHours(0,0,0,0);
+  const dow=today.getDay();
+  const mon=new Date(today);
+  mon.setDate(today.getDate()-(dow===0?6:dow-1)+weekOff*7);
+  return Array.from({length:28},(_,i)=>{const d=new Date(mon);d.setDate(mon.getDate()+i);return d;});
+}
+
+function getMachines() {
+  const fromData=[...new Set(allJobs.map(j=>j.Machine).filter(Boolean))];
+  const seen=new Set();
+  const result=[];
+  DEFAULT_MACHINES.forEach(m=>{ if(!seen.has(m)){seen.add(m);result.push(m);} });
+  fromData.forEach(m=>{ if(!seen.has(m)){seen.add(m);result.push(m);} });
+  return result;
+}
+
+function fdate(d) { return d.toISOString().slice(0,10); }
+function isToday(d) { return fdate(d)===fdate(new Date()); }
+function isWknd(d) { return d.getDay()===0||d.getDay()===6; }
+
+function jobOnDate(j,d) {
+  if(!j.Start_x0020_Date) return false;
+  const s=new Date(j.Start_x0020_Date); s.setHours(0,0,0,0);
+  const e=j.End_x0020_Date?new Date(j.End_x0020_Date):new Date(s);
+  e.setHours(0,0,0,0);
+  const c=new Date(d); c.setHours(0,0,0,0);
+  return c>=s&&c<=e;
+}
+
+function jobColor(j) {
+  if(j.ColorCode&&j.ColorCode.match(/^#[0-9a-fA-F]{6}$/)) return j.ColorCode;
+  const s=(j.Status||'').toLowerCase();
+  if(s==='completed') return '#c8e6c9';
+  if(s==='cancelled') return '#ffcdd2';
+  if(s==='in progress') return '#fff9c4';
+  return '#bbdefb';
+}
+
+function isLight(hex) {
+  const c=hex.replace('#','');
+  if(c.length!==6) return true;
+  return (parseInt(c.substr(0,2),16)*299+parseInt(c.substr(2,2),16)*587+parseInt(c.substr(4,2),16)*114)/1000>150;
+}
+
+function xe(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function renderCal() {
+  const dates=getWeekDates();
+  const machines=getMachines();
+  const grid=document.getElementById('cal-grid');
+
+  // month label
+  const f=dates[0], l=dates[dates.length-1];
+  const ml = f.getMonth()===l.getMonth()&&f.getFullYear()===l.getFullYear()
+    ? LONG_MONTHS[f.getMonth()]+' '+f.getFullYear()
+    : MONTHS[f.getMonth()]+' – '+MONTHS[l.getMonth()]+' '+l.getFullYear();
+  document.getElementById('month-label').textContent=ml;
+
+  grid.style.gridTemplateColumns=`120px repeat(${dates.length},92px)`;
+
+  let h='';
+
+  // Header
+  h+=`<div class="cal-corner">DATE</div>`;
+  dates.forEach(d=>{
+    const cls=[isToday(d)?'is-today':'',isWknd(d)?'is-weekend':''].join(' ').trim();
+    h+=`<div class="cal-date-cell ${cls}"><div class="d-day">${DAYS[d.getDay()]}</div><div class="d-num">${d.getDate()}</div><div class="d-mon">${MONTHS[d.getMonth()]}</div></div>`;
+  });
+
+  // Machine rows
+  machines.forEach(machine=>{
+    h+=`<div class="row-label">${xe(machine)}</div>`;
+    dates.forEach(d=>{
+      const ds=fdate(d);
+      let jobs=allJobs.filter(j=>{
+        if((j.Machine||'')!==machine) return false;
+        if(!jobOnDate(j,d)) return false;
+        if(filterOn) return j.Status==='Scheduled'||!j.Status;
+        return true;
+      });
+      const cc=['day-cell',isWknd(d)?'is-weekend':'',isToday(d)?'is-today':''].filter(Boolean).join(' ');
+      h+=`<div class="${cc}" onclick="openNew('${xe(machine)}','${ds}')">`;
+      jobs.forEach(j=>{
+        const bg=jobColor(j);
+        const tc=isLight(bg)?'#111':'#fff';
+        h+=`<div class="jcard" style="background:${bg};color:${tc}" onclick="event.stopPropagation();openEdit('${j.id}')">
+          <div class="jn">${xe(j.JobNumber||'')}${j.JobNumber&&j.Suburb?' - ':''}${xe(j.Suburb||j.Title||'')}</div>
+          ${j.Crew?`<div class="jc">${xe(j.Crew)}</div>`:''}
+        </div>`;
+      });
+      h+=`</div>`;
+    });
+  });
+
+  grid.innerHTML=h;
+}
+
+function shiftWeeks(n) { weekOff+=n; renderCal(); }
+function toggleFilter() {
+  filterOn=!filterOn;
+  document.getElementById('filter-btn').classList.toggle('active',filterOn);
+  renderCal();
+}
+
+// ── MODAL ──────────────────────────────────────────────────────────
+function openNew(machine,dateStr) {
+  editId=null;
+  document.getElementById('m-title').textContent='New Job';
+  document.getElementById('save-btn').textContent='Save Job';
+  document.getElementById('del-btn').style.display='none';
+  clearForm();
+  if(machine) document.getElementById('f-machine').value=machine;
+  if(dateStr) {
+    document.getElementById('f-startdate').value=dateStr+'T08:00';
+    document.getElementById('f-enddate').value=dateStr+'T17:00';
+  }
+  document.getElementById('modal-bg').style.display='flex';
+}
+function openAddModal(m,d) { openNew(m||'',d||''); }
+
+function openEdit(id) {
+  const j=allJobs.find(x=>x.id===id); if(!j) return;
+  editId=id;
+  document.getElementById('m-title').textContent='Edit Job';
+  document.getElementById('save-btn').textContent='Update Job';
+  document.getElementById('del-btn').style.display='block';
+  document.getElementById('f-title').value=j.Title||'';
+  document.getElementById('f-jobnumber').value=j.JobNumber||'';
+  document.getElementById('f-status').value=j.Status||'Scheduled';
+  document.getElementById('f-jobtype').value=j.JobType||'';
+  document.getElementById('f-machine').value=j.Machine||'';
+  document.getElementById('f-suburb').value=j.Suburb||'';
+  document.getElementById('f-crew').value=j.Crew||'';
+  document.getElementById('f-colorcode').value=j.ColorCode||'#a8d5f5';
+  document.getElementById('f-notes').value=j.Notes||'';
+  document.getElementById('f-tf').checked=!!j.TriggerFlow;
+  document.getElementById('f-ca').checked=!!j['Client_x0020_has_x0020_approved_x0020_site_x0020_access'];
+  document.getElementById('f-bk').checked=!!j['Booking_x0020_the_x0020_subcontractor_x0020_for_x0020_service_x0020_clearance'];
+  document.getElementById('f-startdate').value=j.Start_x0020_Date?j.Start_x0020_Date.slice(0,16):'';
+  document.getElementById('f-enddate').value=j.End_x0020_Date?j.End_x0020_Date.slice(0,16):'';
+  document.getElementById('modal-bg').style.display='flex';
+}
+
+function clearForm() {
+  ['f-title','f-jobnumber','f-jobtype','f-machine','f-suburb','f-crew','f-notes','f-startdate','f-enddate'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('f-status').value='Scheduled';
+  document.getElementById('f-colorcode').value='#a8d5f5';
+  ['f-tf','f-ca','f-bk'].forEach(id=>document.getElementById(id).checked=false);
+}
+
+function closeModal() { document.getElementById('modal-bg').style.display='none'; }
+function bgClose(e) { if(e.target===document.getElementById('modal-bg')) closeModal(); }
+
+async function saveJob() {
+  const title=document.getElementById('f-title').value.trim();
+  if(!title){toast('Title is required','error');return;}
+  const fields={
+    Title:title,
+    JobNumber:document.getElementById('f-jobnumber').value,
+    Status:document.getElementById('f-status').value,
+    JobType:document.getElementById('f-jobtype').value,
+    Machine:document.getElementById('f-machine').value,
+    Suburb:document.getElementById('f-suburb').value,
+    Crew:document.getElementById('f-crew').value,
+    Color:document.getElementById('f-colorcode').value,
+    ColorCode:document.getElementById('f-colorcode').value,
+    Notes:document.getElementById('f-notes').value,
+    TriggerFlow:document.getElementById('f-tf').checked,
+    'Client_x0020_has_x0020_approved_x0020_site_x0020_access':document.getElementById('f-ca').checked,
+    'Booking_x0020_the_x0020_subcontractor_x0020_for_x0020_service_x0020_clearance':document.getElementById('f-bk').checked,
+  };
+  const sd=document.getElementById('f-startdate').value;
+  const ed=document.getElementById('f-enddate').value;
+  if(sd) fields['Start_x0020_Date']=new Date(sd).toISOString();
+  if(ed) fields['End_x0020_Date']=new Date(ed).toISOString();
+  const btn=document.getElementById('save-btn');
+  btn.textContent='Saving...'; btn.disabled=true;
+  try {
+    const sid=await getSite();
+    if(editId) { await gfetch('PATCH',`/sites/${sid}/lists/${LIST_NAME}/items/${editId}/fields`,fields); toast('Job updated ✓','success'); }
+    else { await gfetch('POST',`/sites/${sid}/lists/${LIST_NAME}/items`,{fields}); toast('Job created ✓','success'); }
+    closeModal(); loadJobs();
+  } catch(e) { toast('Error: '+e.message,'error'); }
+  btn.textContent=editId?'Update Job':'Save Job'; btn.disabled=false;
+}
+
+async function deleteJob() {
+  if(!editId) return;
+  const j=allJobs.find(x=>x.id===editId);
+  if(!confirm(`Delete "${j?j.Title:'this job'}"?`)) return;
+  try {
+    const sid=await getSite();
+    await gfetch('DELETE',`/sites/${sid}/lists/${LIST_NAME}/items/${editId}`);
+    toast('Deleted','success'); closeModal(); loadJobs();
+  } catch(e) { toast('Error: '+e.message,'error'); }
+}
+
+// ── UTILS ──────────────────────────────────────────────────────────
+let spinEl=null;
+function spin(on) {
+  if(on&&!spinEl) { spinEl=document.createElement('div'); spinEl.className='spin-wrap'; spinEl.innerHTML='<div class="spinner"></div><div style="font-size:13px;color:#555">Loading...</div>'; document.body.appendChild(spinEl); }
+  else if(!on&&spinEl) { spinEl.remove(); spinEl=null; }
+}
+
+function toast(msg,type='success') {
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.className='toast '+type; t.style.display='block';
+  clearTimeout(t._t); t._t=setTimeout(()=>t.style.display='none',3500);
 }
 
 initMsal();
