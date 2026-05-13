@@ -8,7 +8,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Saira:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'Saira', 'Segoe UI', Arial, sans-serif; background: #f0f4f8; color: #231F20; min-height: 100vh; overflow-x: hidden; }
+html, body { height: 100%; overflow: hidden; }
+body { font-family: 'Saira', 'Segoe UI', Arial, sans-serif; background: #f0f4f8; color: #231F20; }
 
 #login-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 14px; background: #f0f2f5; }
 #login-screen h1 { font-size: 22px; font-weight: 700; color: #0039a5; }
@@ -18,7 +19,7 @@ body { font-family: 'Saira', 'Segoe UI', Arial, sans-serif; background: #f0f4f8;
 #login-btn:disabled { opacity: 0.6; cursor: default; }
 #login-error { color: #c0392b; font-size: 13px; background: #fdf0ed; padding: 8px 16px; border-radius: 6px; border: 1px solid #f5c6c6; max-width: 360px; text-align: center; display: none; }
 
-#app { display: none; flex-direction: column; height: 100vh; }
+#app { display: none; flex-direction: column; height: 100vh; overflow: hidden; }
 
 .topbar { background: #0039a5; color: white; height: 50px; display: flex; align-items: center; padding: 0 12px; gap: 8px; flex-shrink: 0; }
 .topbar-brand { display: flex; align-items: center; gap: 7px; }
@@ -40,8 +41,8 @@ body { font-family: 'Saira', 'Segoe UI', Arial, sans-serif; background: #f0f4f8;
 .user-chip { font-size: 11px; background: rgba(255,255,255,0.15); padding: 3px 9px; border-radius: 10px; cursor: pointer; white-space: nowrap; }
 .user-chip:hover { background: rgba(255,255,255,0.25); }
 
-.cal-wrap { flex: 1; overflow: auto; }
-.cal-grid { display: grid; }
+.cal-wrap { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+.cal-grid { display: grid; flex: 1; overflow-x: auto; overflow-y: hidden; }
 
 .cal-corner { background: #002d84; color: rgba(255,255,255,0.7); position: sticky; left: 0; z-index: 20; width: 120px; min-width: 120px; border-right: 2px solid #001f6b; border-bottom: 2px solid #001f6b; padding: 5px 8px; font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; display: flex; align-items: center; }
 .cal-date-cell { background: #0039a5; color: white; text-align: center; padding: 4px 2px 5px; border-right: 1px solid rgba(255,255,255,0.12); border-bottom: 2px solid #001f6b; cursor: default; }
@@ -49,8 +50,8 @@ body { font-family: 'Saira', 'Segoe UI', Arial, sans-serif; background: #f0f4f8;
 .cal-date-cell .d-num { font-size: 15px; font-weight: 700; line-height: 1.2; }
 .cal-date-cell .d-mon { font-size: 10px; opacity: 0.65; }
 .cal-date-cell.is-today { background: #1a5db5; }
-.row-label { background: #dde6f7; color: #0039a5; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; position: sticky; left: 0; z-index: 10; width: 120px; min-width: 120px; border-right: 2px solid #99b3e0; border-bottom: 1px solid #b3c8e8; padding: 4px 8px; display: flex; align-items: center; }
-.day-cell { border-right: 1px dashed #b3c8e8; border-bottom: 1px solid #b3c8e8; background: white; padding: 3px 4px; min-height: 0; height: auto; cursor: pointer; vertical-align: top; }
+.row-label { background: #dde6f7; color: #0039a5; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; position: sticky; left: 0; z-index: 10; width: 120px; min-width: 120px; border-right: 2px solid #99b3e0; border-bottom: 1px solid #b3c8e8; padding: 4px 8px; display: flex; align-items: center; overflow: hidden; }
+.day-cell { border-right: 1px dashed #b3c8e8; border-bottom: 1px solid #b3c8e8; background: white; padding: 3px 4px; cursor: pointer; vertical-align: top; overflow-y: auto; }
 .day-cell:hover { background: #f0f7ff; }
 .day-cell.is-today { background: #fffde7; }
 .cal-date-cell.week-start, .day-cell.week-start { border-left: 3px solid #0039a5 !important; }
@@ -186,7 +187,7 @@ const LONG_MONTHS = ['January','February','March','April','May','June','July','A
 const ROW_DEFS = [
   { label: 'GEOPROBE', matches: ['Geoprobe V3', 'GEOPROBE V3', 'geoprobe v3'] },
   { label: 'GEOPROBE', matches: ['Geoprobe V4', 'GEOPROBE V4', 'geoprobe v4'] },
-  { label: 'HANJIN (TRACK)', matches: ['HANJIN (TRACK)', 'Hanjin (Track)', 'Hanjin (track)', 'HANJIN', 'Hanjin'] },
+  { label: 'HANJIN (TRACK)', matches: ['HANJIN (TRACK)', 'Hanjin (Track)', 'Hanjin (track)', 'HANJIN (TRUCK)', 'Hanjin (Truck)', 'HANJIN', 'Hanjin'] },
   { label: 'COM 305', matches: ['COM 305', 'Com 305'] },
   { label: 'E/PROBE', matches: ['E/PROBE', 'E/Probe', 'e/probe'] },
   { label: 'DINGO', matches: ['Dingo(Blue)', 'Dingo (Blue)', 'DINGO (BLUE)', 'Dingo(Red)', 'Dingo (Red)', 'DINGO (RED)', 'DINGO', 'Dingo'] },
@@ -334,11 +335,18 @@ function renderCal() {
     : MONTHS[f.getMonth()]+' – '+MONTHS[l.getMonth()]+' '+l.getFullYear();
   document.getElementById('month-label').textContent=ml;
 
-  // Make columns fill available screen width
-  const wrapWidth = document.getElementById('cal-grid').parentElement.clientWidth || window.innerWidth;
+  // Columns fill screen width
+  const wrapEl = document.getElementById('cal-grid').parentElement;
+  const wrapWidth = wrapEl.clientWidth || window.innerWidth;
   const labelW = 120;
   const colW = Math.max(72, Math.floor((wrapWidth - labelW) / dates.length));
-  grid.style.gridTemplateColumns=`${labelW}px repeat(${dates.length},${colW}px)`;
+  grid.style.gridTemplateColumns = `${labelW}px repeat(${dates.length},${colW}px)`;
+
+  // Rows fill screen height — divide available space equally among machine rows
+  const availH = wrapEl.clientHeight || (window.innerHeight - 50);
+  const headerH = 46;
+  const rowH = Math.max(38, Math.floor((availH - headerH) / machines.length));
+  grid.style.gridTemplateRows = `${headerH}px repeat(${machines.length}, ${rowH}px)`;
 
   let h='';
 
