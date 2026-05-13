@@ -521,20 +521,39 @@ function renderCal() {
       });
       const cellIdx = dates.indexOf(d); const isFirstOfWeek = cellIdx > 0 && cellIdx % 5 === 0;
       const cc=['day-cell',isToday(d)?'is-today':'',isFirstOfWeek?'week-start':''].filter(Boolean).join(' ');
-      h+=`<div class="${cc}" onclick="openNew('${xe(row.matches[0])}','${ds}')">`;
+      h+=`<div class="${cc}" data-machine="${xe(row.matches[0])}" data-date="${ds}">`;
       jobs.forEach(j=>{
         const bg=jobColor(j);
         const tc=isLight(bg)?'#111':'#fff';
-        h+=`<div class="jcard" style="background:${bg};color:${tc}" onclick="event.stopPropagation();openEdit('${j.id}')">
-          <div class="jn">${xe(j.JobNumber||'')}${j.JobNumber&&j.Suburb?' - ':''}${xe(j.Suburb||j.Title||'')}</div>
-          ${j.Crew?`<div class="jc">${xe(j.Crew)}</div>`:''}
-        </div>`;
+        h+=`<div class="jcard" data-jobid="${j.id}" style="background:${bg};color:${tc}">`
+        +`<div class="jn" style="pointer-events:none">${xe(j.JobNumber||"")}${j.JobNumber&&j.Suburb?" - ":""}${xe(j.Suburb||j.Title||"")}</div>`
+        +(j.Crew?`<div class="jc" style="pointer-events:none">${xe(j.Crew)}</div>`:"")
+        +`</div>`;
       });
       h+=`</div>`;
     });
   });
 
   grid.innerHTML=h;
+
+  // Event delegation — one listener on the grid handles all clicks reliably
+  grid.onclick = function(e) {
+    // Check if a job card was clicked (or a child of one)
+    const card = e.target.closest('.jcard');
+    if (card) {
+      e.stopPropagation();
+      const id = card.dataset.jobid;
+      if (id) openEdit(id);
+      return;
+    }
+    // Check if an empty cell was clicked
+    const cell = e.target.closest('.day-cell');
+    if (cell) {
+      const machine = cell.dataset.machine || '';
+      const date = cell.dataset.date || '';
+      openNew(machine, date);
+    }
+  };
 }
 
 function shiftWeeks(n) { weekOff+=n; renderCal(); }
