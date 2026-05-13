@@ -719,7 +719,8 @@ async function saveJob() {
   fields['Machine'] = machine;
   if(suburb)   fields['Suburb'] = suburb;
   // SP multi-select Choice field requires array format
-  if(selectedCrew.length > 0) fields['Crew'] = { value: selectedCrew };
+  // Graph API multi-select Choice: send as array
+  if(selectedCrew.length > 0) fields['Crew'] = selectedCrew;
   if(colorName && colorName !== '') {
     fields['Color'] = colorName;
     fields['ColorCode'] = colorHex;
