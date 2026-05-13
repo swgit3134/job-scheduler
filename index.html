@@ -278,22 +278,31 @@ async function initMsal() {
     btn.disabled = true; btn.textContent = 'Loading...';
     msalInst = new msal.PublicClientApplication(msalCfg);
     await msalInst.initialize();
-    // Handle redirect response (if returning from a redirect login)
-    try {
-      const r = await msalInst.handleRedirectPromise();
-      if (r?.account && r?.accessToken) { onIn(r.account); return; }
-    } catch(re) { console.warn('handleRedirectPromise:', re.message); }
-    // Check for existing cached accounts
+
+    // Step 1: Handle redirect response (coming back from Microsoft login page)
+    let redirectResp = null;
+    try { redirectResp = await msalInst.handleRedirectPromise(); } 
+    catch(re) { console.warn('handleRedirectPromise error:', re.message); }
+
+    if (redirectResp?.account) {
+      // Just came back from redirect login — we have a fresh token
+      onIn(redirectResp.account);
+      return;
+    }
+
+    // Step 2: Already signed in from a previous session
     const accs = msalInst.getAllAccounts();
     if (accs.length > 0) {
-      // Verify we can actually get a token before showing the app
       try {
-        const testResp = await msalInst.acquireTokenSilent({ account: accs[0], scopes: SCOPES });
+        const testResp = await msalInst.acquireTokenSilent({ account: accs[0], scopes: SCOPES, forceRefresh: false });
         if (testResp?.accessToken && testResp.accessToken.length > 20) {
-          onIn(accs[0]); return;
+          onIn(accs[0]);
+          return;
         }
-      } catch(te) { console.warn('Cached account token test failed:', te.message); }
+      } catch(te) { console.warn('Session token refresh failed:', te.message); }
     }
+
+    // Step 3: Need to sign in
     btn.disabled = false;
     btn.innerHTML = `<svg viewBox="0 0 21 21" width="20" height="20"><rect x="1" y="1" width="9" height="9" fill="#f25022"/><rect x="11" y="1" width="9" height="9" fill="#7fba00"/><rect x="1" y="11" width="9" height="9" fill="#00a4ef"/><rect x="11" y="11" width="9" height="9" fill="#ffb900"/></svg> Sign in with Microsoft`;
   } catch(e) { loginErr('Init error: '+e.message); document.getElementById('login-btn').disabled=false; }
@@ -303,24 +312,12 @@ async function signIn() {
   try {
     document.getElementById('login-btn').disabled=true;
     document.getElementById('login-btn').textContent='Signing in...';
-    // Use POPUP - avoids page reload losing token context on Azure Static Web Apps
-    const resp = await msalInst.loginPopup({ scopes: SCOPES });
-    if (resp?.account) { onIn(resp.account); return; }
-    loginErr('Sign-in did not return an account. Please try again.');
-    document.getElementById('login-btn').disabled=false;
+    // Use redirect for initial login (popup causes nested popup errors)
+    await msalInst.loginRedirect({ scopes: SCOPES });
   } catch(e) {
-    if (e.message && e.message.includes('popup_window_error')) {
-      // Popup blocked - fall back to redirect
-      loginErr('Popup was blocked. Allow popups for this site and try again, or click to continue with redirect.');
-      document.getElementById('login-btn').disabled=false;
-      document.getElementById('login-btn').textContent='Try redirect sign-in';
-      document.getElementById('login-btn').onclick = async () => {
-        await msalInst.loginRedirect({scopes:SCOPES});
-      };
-    } else {
-      loginErr('Sign-in failed: '+e.message);
-      document.getElementById('login-btn').disabled=false;
-    }
+    loginErr('Sign-in failed: '+e.message);
+    document.getElementById('login-btn').disabled=false;
+    document.getElementById('login-btn').innerHTML=`<svg viewBox="0 0 21 21" width="20" height="20"><rect x="1" y="1" width="9" height="9" fill="#f25022"/><rect x="11" y="1" width="9" height="9" fill="#7fba00"/><rect x="1" y="11" width="9" height="9" fill="#00a4ef"/><rect x="11" y="11" width="9" height="9" fill="#ffb900"/></svg> Sign in with Microsoft`;
   }
 }
 function signOut() { if(confirm('Sign out?')) msalInst.logoutRedirect(); }
@@ -328,25 +325,31 @@ function loginErr(m) { const el=document.getElementById('login-error'); el.textC
 async function token() {
   const accounts = msalInst.getAllAccounts();
   if (!accounts || accounts.length === 0) {
-    throw new Error('Not signed in. Please refresh and sign in again.');
+    throw new Error('Not signed in. Please refresh the page and sign in again.');
   }
   const account = accounts[0];
-  // Try silent (cached)
+
+  // Try 1: silent cached
   try {
-    const resp = await msalInst.acquireTokenSilent({ account, scopes: SCOPES, forceRefresh: false });
-    if (resp?.accessToken && resp.accessToken.length > 20) return resp.accessToken;
-  } catch(e1) { console.warn('Silent token failed:', e1.message); }
-  // Try silent force-refresh
+    const r = await msalInst.acquireTokenSilent({ account, scopes: SCOPES, forceRefresh: false });
+    if (r?.accessToken && r.accessToken.length > 20) return r.accessToken;
+  } catch(e1) { console.warn('Silent (cached):', e1.message); }
+
+  // Try 2: force refresh from server
   try {
-    const resp = await msalInst.acquireTokenSilent({ account, scopes: SCOPES, forceRefresh: true });
-    if (resp?.accessToken && resp.accessToken.length > 20) return resp.accessToken;
-  } catch(e2) { console.warn('Force refresh failed:', e2.message); }
-  // Popup re-auth
+    const r = await msalInst.acquireTokenSilent({ account, scopes: SCOPES, forceRefresh: true });
+    if (r?.accessToken && r.accessToken.length > 20) return r.accessToken;
+  } catch(e2) { console.warn('Silent (refresh):', e2.message); }
+
+  // Try 3: popup re-auth (works mid-session, not during initial login)
   try {
-    const resp = await msalInst.acquireTokenPopup({ account, scopes: SCOPES });
-    if (resp?.accessToken && resp.accessToken.length > 20) return resp.accessToken;
-  } catch(e3) { console.warn('Popup failed:', e3.message); }
-  throw new Error('Session expired. Please sign out and sign in again.');
+    const r = await msalInst.acquireTokenPopup({ account, scopes: SCOPES });
+    if (r?.accessToken && r.accessToken.length > 20) return r.accessToken;
+  } catch(e3) { console.warn('Popup re-auth:', e3.message); }
+
+  // All failed — redirect to login
+  await msalInst.loginRedirect({ scopes: SCOPES });
+  throw new Error('Redirecting to sign in...');
 }
 async function gfetch(method,path,body) {
   const t = await token();
