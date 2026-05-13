@@ -476,17 +476,33 @@ function getMachines() {
   return [...ROW_DEFS, ...extraRows];
 }
 
-function fdate(d) { return d.toISOString().slice(0,10); }
+function fdate(d) {
+  // Use local date to avoid UTC offset shifting the date
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
 function isToday(d) { return fdate(d)===fdate(new Date()); }
 function isWknd(d) { return d.getDay()===0||d.getDay()===6; }
 
-function jobOnDate(j,d) {
-  if(!j.Start_x0020_Date) return false;
-  const s=new Date(j.Start_x0020_Date); s.setHours(0,0,0,0);
-  const e=j.End_x0020_Date?new Date(j.End_x0020_Date):new Date(s);
-  e.setHours(0,0,0,0);
-  const c=new Date(d); c.setHours(0,0,0,0);
-  return c>=s&&c<=e;
+function parseSpDate(str) {
+  // Parse SP date string and return local midnight date
+  // SP returns ISO string like '2026-05-14T14:00:00Z' (stored as noon UTC)
+  // We want the date portion only, interpreted as local calendar date
+  if (!str) return null;
+  // Extract just the date part from the ISO string (YYYY-MM-DD)
+  const datePart = str.slice(0, 10); // '2026-05-14'
+  const [y, m, day] = datePart.split('-').map(Number);
+  return new Date(y, m - 1, day); // local midnight, no timezone shift
+}
+
+function jobOnDate(j, d) {
+  if (!j.Start_x0020_Date) return false;
+  const s = parseSpDate(j.Start_x0020_Date);
+  const e = j.End_x0020_Date ? parseSpDate(j.End_x0020_Date) : new Date(s);
+  const c = new Date(d.getFullYear(), d.getMonth(), d.getDate()); // local midnight
+  return c >= s && c <= e;
 }
 
 function jobColor(j) {
@@ -656,8 +672,9 @@ function openEdit(id) {
   document.getElementById('f-ca').checked = !!caVal;
   document.getElementById('f-bk').checked = !!bkVal;
   // Dates — store as date only (no time)
-  document.getElementById('f-startdate').value=j.Start_x0020_Date?j.Start_x0020_Date.slice(0,10):'';
-  document.getElementById('f-enddate').value=j.End_x0020_Date?j.End_x0020_Date.slice(0,10):'';
+  // Extract YYYY-MM-DD from SP ISO string (always use date portion only)
+  document.getElementById('f-startdate').value = j.Start_x0020_Date ? j.Start_x0020_Date.slice(0,10) : '';
+  document.getElementById('f-enddate').value   = j.End_x0020_Date   ? j.End_x0020_Date.slice(0,10)   : '';
   // Color name reverse lookup
   const cc = j.ColorCode||'';
   const colorEntry = Object.entries(COLOR_MAP).find(([,v])=>v.toLowerCase()===cc.toLowerCase());
@@ -712,8 +729,9 @@ async function saveJob() {
 
   const sd = document.getElementById('f-startdate').value;
   const ed = document.getElementById('f-enddate').value;
-  if(sd) fields['Start_x0020_Date'] = new Date(sd + 'T00:00:00').toISOString();
-  if(ed) fields['End_x0020_Date']   = new Date(ed + 'T00:00:00').toISOString();
+  // Save as noon UTC so the date stays correct across all timezones
+  if(sd) fields['Start_x0020_Date'] = sd + 'T12:00:00.000Z';
+  if(ed) fields['End_x0020_Date']   = ed + 'T12:00:00.000Z';
 
   fields['Client_x0020_has_x0020_approved_'] = document.getElementById('f-ca').checked;
   fields['Booking_x0020_the_x0020_subcontr'] = document.getElementById('f-bk').checked;
