@@ -645,7 +645,14 @@ function openEdit(id) {
   const colorEntry = Object.entries(COLOR_MAP).find(([,v])=>v.toLowerCase()===cc.toLowerCase());
   document.getElementById('f-color-name').value = colorEntry ? colorEntry[0] : '';
   // Crew — stored as comma-separated string
-  selectedCrew = j.Crew ? j.Crew.split(',').map(c=>c.trim()).filter(Boolean) : [];
+  // SP multi-select Choice returns array or semicolon-separated string
+  if (Array.isArray(j.Crew)) {
+    selectedCrew = j.Crew.filter(Boolean);
+  } else if (j.Crew && typeof j.Crew === 'string') {
+    selectedCrew = j.Crew.split(/[;,]/).map(c=>c.trim()).filter(Boolean);
+  } else {
+    selectedCrew = [];
+  }
   updateCrewDisplay();
   document.getElementById('modal-bg').style.display='flex';
 }
@@ -670,17 +677,18 @@ async function saveJob() {
   const colorHex = COLOR_MAP[colorName] || '#a8d5f5';
   const jobNum = document.getElementById('f-jobnumber').value.trim();
   const suburb = document.getElementById('f-suburb').value.trim();
-  // Title = JobNumber + Suburb combined, or just one of them
-  const title = jobNum || [suburb, machine].filter(Boolean).join(' - ') || machine;
   // Build fields object - only include fields with values to avoid SP rejecting empty strings
-  const fields = { Title: title };
+  const fields = {};
   if(jobNum)   fields['JobNumber'] = jobNum;
   fields['Status']  = document.getElementById('f-status').value || 'Fieldwork Scheduled';
   fields['Machine'] = machine;
   if(suburb)   fields['Suburb'] = suburb;
-  // Crew is a SP Choice field - send only one value
-  if(selectedCrew.length > 0) fields['Crew'] = selectedCrew[0];
-  if(colorName) { fields['Color'] = colorName; fields['ColorCode'] = colorHex; }
+  // SP multi-select Choice field requires array format
+  if(selectedCrew.length > 0) fields['Crew'] = { value: selectedCrew };
+  if(colorName && colorName !== '') {
+    fields['Color'] = colorName;
+    fields['ColorCode'] = colorHex;
+  }
   const notes = document.getElementById('f-notes').value;
   if(notes)    fields['Notes'] = notes;
 
