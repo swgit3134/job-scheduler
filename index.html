@@ -197,10 +197,9 @@ body { font-family: 'Saira', 'Segoe UI', Arial, sans-serif; background: #f0f4f8;
         <label>Status</label>
         <select id="f-status">
           <option value="">Select</option>
-          <option>Scheduled</option>
-          <option>In Progress</option>
-          <option>Completed</option>
-          <option>Cancelled</option>
+          <option>Fieldwork Scheduled</option>
+          <option>Fieldwork complete</option>
+          <option>Fieldwork to be booked</option>
         </select>
       </div>
       <div class="fg">
@@ -393,12 +392,21 @@ function fn(displayName) {
   return fieldMap[displayName.toLowerCase()] || displayName;
 }
 
-// Helper: call this from console to see real SP field names: checkFields()
+// Helpers - call from browser console:
+// checkFields()  → shows all column display names vs internal names
+// checkItem(884) → shows all field keys on a specific item
 window.checkFields = async function() {
   const sid = await getSite();
   const cols = await gfetch('GET', `/sites/${sid}/lists/${LIST_NAME}/columns`);
-  console.table(cols.value.map(c=>({displayName:c.displayName, internalName:c.name})));
-  return cols.value.map(c=>({displayName:c.displayName, internalName:c.name}));
+  console.table(cols.value.map(c=>({displayName:c.displayName, internalName:c.name, readOnly:c.readOnly})));
+  return cols.value;
+};
+window.checkItem = async function(itemId) {
+  const sid = await getSite();
+  const item = await gfetch('GET', `/sites/${sid}/lists/${LIST_NAME}/items/${itemId}?expand=fields`);
+  console.log('Item fields:', item.fields);
+  console.table(Object.entries(item.fields).map(([k,v])=>({fieldName:k, value:String(v).substring(0,50)})));
+  return item.fields;
 };
 
 // ── DATA ──────────────────────────────────────────────────────────
@@ -465,11 +473,7 @@ function jobOnDate(j,d) {
 
 function jobColor(j) {
   if(j.ColorCode&&j.ColorCode.match(/^#[0-9a-fA-F]{6}$/)) return j.ColorCode;
-  const s=(j.Status||'').toLowerCase();
-  if(s==='completed') return '#c8e6c9';
-  if(s==='cancelled') return '#ffcdd2';
-  if(s==='in progress') return '#fff9c4';
-  return '#bbdefb';
+  return '#bbdefb'; // default light blue if no ColorCode set
 }
 
 function isLight(hex) {
@@ -665,26 +669,23 @@ async function saveJob() {
   const suburb = document.getElementById('f-suburb').value.trim();
   // Title = JobNumber + Suburb combined, or just one of them
   const title = [jobNum, suburb].filter(Boolean).join(' - ') || machine;
-  // Use only the minimal safe fields — Title is required, others use SP internal names
-  const fields = {
-    Title:      title,
-    JobNumber:  jobNum,
-    Status:     document.getElementById('f-status').value || 'Scheduled',
-    Machine:    machine,
-    Suburb:     suburb,
-    Crew:       selectedCrew.join(', '),
-    Color:      colorName,
-    ColorCode:  colorHex,
-    Notes:      document.getElementById('f-notes').value,
-  };
-  const sd=document.getElementById('f-startdate').value;
-  const ed=document.getElementById('f-enddate').value;
-  if(sd) fields['Start_x0020_Date'] = new Date(sd+'T00:00:00').toISOString();
-  if(ed) fields['End_x0020_Date']   = new Date(ed+'T00:00:00').toISOString();
+  // Build fields object - only include fields with values to avoid SP rejecting empty strings
+  const fields = { Title: title };
+  if(jobNum)   fields['JobNumber'] = jobNum;
+  fields['Status']  = document.getElementById('f-status').value || 'Fieldwork Scheduled';
+  fields['Machine'] = machine;
+  if(suburb)   fields['Suburb'] = suburb;
+  // Crew is a SP Choice field - send only one value
+  if(selectedCrew.length > 0) fields['Crew'] = selectedCrew[0];
+  if(colorName) { fields['Color'] = colorName; fields['ColorCode'] = colorHex; }
+  const notes = document.getElementById('f-notes').value;
+  if(notes)    fields['Notes'] = notes;
 
-  // Add boolean fields only if fieldMap has confirmed their internal names
-  // otherwise skip them to avoid bad field name errors
-  // Confirmed truncated SP internal names (32 char limit)
+  const sd = document.getElementById('f-startdate').value;
+  const ed = document.getElementById('f-enddate').value;
+  if(sd) fields['Start_x0020_Date'] = new Date(sd + 'T00:00:00').toISOString();
+  if(ed) fields['End_x0020_Date']   = new Date(ed + 'T00:00:00').toISOString();
+
   fields['Client_x0020_has_x0020_approved_'] = document.getElementById('f-ca').checked;
   fields['Booking_x0020_the_x0020_subcontr'] = document.getElementById('f-bk').checked;
 
@@ -769,8 +770,8 @@ function renderCrewList(filter) {
   const f = filter.toLowerCase();
   list.innerHTML = CREW_LIST
     .filter(c => c.toLowerCase().includes(f))
-    .map(c => `<div class="crew-option">
-      <input type="checkbox" ${selectedCrew.includes(c)?'checked':''} onchange="toggleCrewMember('${c}',this.checked)">
+    .map(c => `<div class="crew-option" onclick="toggleCrewMember('${c}', ${!selectedCrew.includes(c)})" style="cursor:pointer">
+      <input type="radio" ${selectedCrew.includes(c)?'checked':''} style="accent-color:#0039a5;pointer-events:none">
       <span>${c}</span>
     </div>`).join('');
 }
@@ -780,16 +781,23 @@ function filterCrew() {
 }
 
 function toggleCrewMember(name, checked) {
-  if (checked && !selectedCrew.includes(name)) selectedCrew.push(name);
-  else if (!checked) selectedCrew = selectedCrew.filter(c => c !== name);
+  // Crew is a Choice field in SP - only one value allowed
+  if (checked) {
+    selectedCrew = [name]; // replace, don't append
+  } else {
+    selectedCrew = selectedCrew.filter(c => c !== name);
+  }
   updateCrewDisplay();
+  renderCrewList(document.getElementById('crew-search')?.value || '');
+  // Close dropdown after selection
+  document.getElementById('crew-dropdown').style.display = 'none';
 }
 
 function updateCrewDisplay() {
   const ph = document.getElementById('crew-placeholder');
   const tx = document.getElementById('crew-selected-text');
   if (selectedCrew.length === 0) { ph.style.display=''; tx.style.display='none'; }
-  else { ph.style.display='none'; tx.style.display=''; tx.textContent = selectedCrew.join(', '); }
+  else { ph.style.display='none'; tx.style.display=''; tx.textContent = selectedCrew[0]; }
 }
 
 function applyColorName() {
