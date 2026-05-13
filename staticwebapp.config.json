@@ -1,5 +1,5 @@
 {
   "globalHeaders": {
-    "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://alcdn.msauth.net https://alcdn.msftauth.net https://login.microsoftonline.com; connect-src 'self' https://login.microsoftonline.com https://login.microsoft.com https://graph.microsoft.com https://sts.windows.net; style-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-src https://login.microsoftonline.com"
+    "Content-Security-Policy": "default-src * 'unsafe-inline' 'unsafe-eval'; script-src * 'unsafe-inline' 'unsafe-eval'; connect-src *; img-src * data:; style-src * 'unsafe-inline';"
   }
 }
