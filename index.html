@@ -182,7 +182,18 @@ const LIST_NAME = 'JobScheduler';
 const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const LONG_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-const DEFAULT_MACHINES = ['GEOPROBE','GEOPROBE','HANJIN (TRACK)','COM 305','E/PROBE','DINGO','Site Inspection','Yard / Leave'];
+// Row definitions: each entry is { label: display name, matches: [machine values from SharePoint] }
+// Multiple matches merge into one row. Order here = order on calendar.
+const ROW_DEFS = [
+  { label: 'GEOPROBE', matches: ['Geoprobe V3', 'GEOPROBE V3', 'geoprobe v3'] },
+  { label: 'GEOPROBE', matches: ['Geoprobe V4', 'GEOPROBE V4', 'geoprobe v4'] },
+  { label: 'HANJIN (TRACK)', matches: ['HANJIN (TRACK)', 'Hanjin (Track)', 'HANJIN', 'Hanjin'] },
+  { label: 'COM 305', matches: ['COM 305', 'Com 305'] },
+  { label: 'E/PROBE', matches: ['E/PROBE', 'E/Probe', 'e/probe'] },
+  { label: 'DINGO', matches: ['Dingo(Blue)', 'Dingo (Blue)', 'DINGO (BLUE)', 'Dingo(Red)', 'Dingo (Red)', 'DINGO (RED)', 'DINGO', 'Dingo'] },
+  { label: 'Site Inspection', matches: ['Site Inspection', 'site inspection'] },
+  { label: 'Yard / Leave', matches: ['Yard / Leave', 'Yard/Leave', 'yard / leave'] },
+];
 
 const msalCfg = {
   auth: { clientId: CLIENT_ID, authority: `https://login.microsoftonline.com/${TENANT_ID}`, redirectUri: window.location.origin + window.location.pathname },
@@ -261,12 +272,13 @@ function getWeekDates() {
 }
 
 function getMachines() {
-  const fromData=[...new Set(allJobs.map(j=>j.Machine).filter(Boolean))];
-  const seen=new Set();
-  const result=[];
-  DEFAULT_MACHINES.forEach(m=>{ if(!seen.has(m)){seen.add(m);result.push(m);} });
-  fromData.forEach(m=>{ if(!seen.has(m)){seen.add(m);result.push(m);} });
-  return result;
+  // Return ROW_DEFS as-is — fixed order always shown
+  // Plus append any machine values from data that don't match any row def
+  const allMatchedMachines = new Set(ROW_DEFS.flatMap(r => r.matches.map(m => m.toLowerCase())));
+  const extraMachines = [...new Set(allJobs.map(j=>j.Machine).filter(Boolean))]
+    .filter(m => !allMatchedMachines.has(m.toLowerCase()));
+  const extraRows = extraMachines.map(m => ({ label: m, matches: [m] }));
+  return [...ROW_DEFS, ...extraRows];
 }
 
 function fdate(d) { return d.toISOString().slice(0,10); }
@@ -324,19 +336,24 @@ function renderCal() {
     h+=`<div class="cal-date-cell ${cls}"><div class="d-day">${DAYS[d.getDay()]}</div><div class="d-num">${d.getDate()}</div><div class="d-mon">${MONTHS[d.getMonth()]}</div></div>`;
   });
 
-  // Machine rows
-  machines.forEach(machine=>{
-    h+=`<div class="row-label">${xe(machine)}</div>`;
+  // Machine rows — iterate over row definitions
+  machines.forEach(row=>{
+    const rowLabel = row.label;
+    // Build a lowercase set for fast matching
+    const matchSet = new Set(row.matches.map(m=>m.toLowerCase()));
+    h+=`<div class="row-label">${xe(rowLabel)}</div>`;
     dates.forEach(d=>{
       const ds=fdate(d);
       let jobs=allJobs.filter(j=>{
-        if((j.Machine||'')!==machine) return false;
+        const m=(j.Machine||'').toLowerCase();
+        if(!matchSet.has(m)) return false;
         if(!jobOnDate(j,d)) return false;
         if(filterOn) return j.Status==='Scheduled'||!j.Status;
         return true;
       });
       const cc=['day-cell',isWknd(d)?'is-weekend':'',isToday(d)?'is-today':''].filter(Boolean).join(' ');
-      h+=`<div class="${cc}" onclick="openNew('${xe(machine)}','${ds}')">`;
+      // Pass the first match value as default machine when creating new job from this cell
+      h+=`<div class="${cc}" onclick="openNew('${xe(row.matches[0])}','${ds}')">`;
       jobs.forEach(j=>{
         const bg=jobColor(j);
         const tc=isLight(bg)?'#111':'#fff';
