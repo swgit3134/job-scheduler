@@ -44,18 +44,17 @@ body { font-family: 'Saira', 'Segoe UI', Arial, sans-serif; background: #f0f4f8;
 .cal-grid { display: grid; }
 
 .cal-corner { background: #002d84; color: rgba(255,255,255,0.7); position: sticky; left: 0; z-index: 20; width: 120px; min-width: 120px; border-right: 2px solid #001f6b; border-bottom: 2px solid #001f6b; padding: 5px 8px; font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; display: flex; align-items: center; }
-.cal-date-cell { background: #0039a5; color: white; text-align: center; padding: 4px 2px 5px; border-right: 1px solid rgba(255,255,255,0.12); border-bottom: 2px solid #001f6b; min-width: 92px; width: 92px; cursor: default; }
+.cal-date-cell { background: #0039a5; color: white; text-align: center; padding: 4px 2px 5px; border-right: 1px solid rgba(255,255,255,0.12); border-bottom: 2px solid #001f6b; cursor: default; }
 .cal-date-cell .d-day { font-size: 11px; font-weight: 400; opacity: 0.75; }
 .cal-date-cell .d-num { font-size: 15px; font-weight: 700; line-height: 1.2; }
 .cal-date-cell .d-mon { font-size: 10px; opacity: 0.65; }
 .cal-date-cell.is-today { background: #1a5db5; }
-.cal-date-cell.is-weekend { background: #001f6b; }
-
 .row-label { background: #dde6f7; color: #0039a5; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; position: sticky; left: 0; z-index: 10; width: 120px; min-width: 120px; border-right: 2px solid #99b3e0; border-bottom: 1px solid #b3c8e8; padding: 4px 8px; display: flex; align-items: center; }
-.day-cell { min-width: 92px; width: 92px; border-right: 1px dashed #b3c8e8; border-bottom: 1px solid #b3c8e8; background: white; padding: 2px 3px; min-height: 72px; cursor: pointer; vertical-align: top; }
+.day-cell { border-right: 1px dashed #b3c8e8; border-bottom: 1px solid #b3c8e8; background: white; padding: 3px 4px; min-height: 0; height: auto; cursor: pointer; vertical-align: top; }
 .day-cell:hover { background: #f0f7ff; }
-.day-cell.is-weekend { background: #f5f8fc; }
 .day-cell.is-today { background: #fffde7; }
+.cal-date-cell.week-start, .day-cell.week-start { border-left: 3px solid #0039a5 !important; }
+.cal-date-cell.week-start { background: #002d84; }
 
 .jcard { border-radius: 3px; padding: 3px 5px; margin-bottom: 2px; cursor: pointer; border-left: 3px solid rgba(0,0,0,0.18); }
 .jcard:hover { filter: brightness(0.9); }
@@ -187,11 +186,11 @@ const LONG_MONTHS = ['January','February','March','April','May','June','July','A
 const ROW_DEFS = [
   { label: 'GEOPROBE', matches: ['Geoprobe V3', 'GEOPROBE V3', 'geoprobe v3'] },
   { label: 'GEOPROBE', matches: ['Geoprobe V4', 'GEOPROBE V4', 'geoprobe v4'] },
-  { label: 'HANJIN (TRACK)', matches: ['HANJIN (TRACK)', 'Hanjin (Track)', 'HANJIN', 'Hanjin'] },
+  { label: 'HANJIN (TRACK)', matches: ['HANJIN (TRACK)', 'Hanjin (Track)', 'Hanjin (track)', 'HANJIN', 'Hanjin'] },
   { label: 'COM 305', matches: ['COM 305', 'Com 305'] },
   { label: 'E/PROBE', matches: ['E/PROBE', 'E/Probe', 'e/probe'] },
   { label: 'DINGO', matches: ['Dingo(Blue)', 'Dingo (Blue)', 'DINGO (BLUE)', 'Dingo(Red)', 'Dingo (Red)', 'DINGO (RED)', 'DINGO', 'Dingo'] },
-  { label: 'Site Inspection', matches: ['Site Inspection', 'site inspection'] },
+  { label: 'TBC / SI', matches: ['Site Inspection', 'site inspection', 'TBC', 'tbc'] },
   { label: 'Yard / Leave', matches: ['Yard / Leave', 'Yard/Leave', 'yard / leave'] },
 ];
 
@@ -267,8 +266,18 @@ function getWeekDates() {
   const today=new Date(); today.setHours(0,0,0,0);
   const dow=today.getDay();
   const mon=new Date(today);
-  mon.setDate(today.getDate()-(dow===0?6:dow-1)+weekOff*7);
-  return Array.from({length:28},(_,i)=>{const d=new Date(mon);d.setDate(mon.getDate()+i);return d;});
+  mon.setDate(today.getDate()-(dow===0?6:dow-1)+weekOff*4);
+  // Build 4 weeks of Mon–Fri only (20 days), with week metadata
+  const dates=[];
+  for(let w=0;w<4;w++){
+    for(let d=0;d<5;d++){
+      const day=new Date(mon);
+      day.setDate(mon.getDate()+w*7+d);
+      day._weekIndex=w; // track which week this belongs to
+      dates.push(day);
+    }
+  }
+  return dates;
 }
 
 function getMachines() {
@@ -325,14 +334,19 @@ function renderCal() {
     : MONTHS[f.getMonth()]+' – '+MONTHS[l.getMonth()]+' '+l.getFullYear();
   document.getElementById('month-label').textContent=ml;
 
-  grid.style.gridTemplateColumns=`120px repeat(${dates.length},92px)`;
+  // Make columns fill available screen width
+  const wrapWidth = document.getElementById('cal-grid').parentElement.clientWidth || window.innerWidth;
+  const labelW = 120;
+  const colW = Math.max(72, Math.floor((wrapWidth - labelW) / dates.length));
+  grid.style.gridTemplateColumns=`${labelW}px repeat(${dates.length},${colW}px)`;
 
   let h='';
 
   // Header
   h+=`<div class="cal-corner">DATE</div>`;
-  dates.forEach(d=>{
-    const cls=[isToday(d)?'is-today':'',isWknd(d)?'is-weekend':''].join(' ').trim();
+  dates.forEach((d,i)=>{
+    const isFirstOfWeek = d._weekIndex > 0 && i % 5 === 0;
+    const cls=[isToday(d)?'is-today':'', isFirstOfWeek?'week-start':''].join(' ').trim();
     h+=`<div class="cal-date-cell ${cls}"><div class="d-day">${DAYS[d.getDay()]}</div><div class="d-num">${d.getDate()}</div><div class="d-mon">${MONTHS[d.getMonth()]}</div></div>`;
   });
 
@@ -351,8 +365,8 @@ function renderCal() {
         if(filterOn) return j.Status==='Scheduled'||!j.Status;
         return true;
       });
-      const cc=['day-cell',isWknd(d)?'is-weekend':'',isToday(d)?'is-today':''].filter(Boolean).join(' ');
-      // Pass the first match value as default machine when creating new job from this cell
+      const cellIdx = dates.indexOf(d); const isFirstOfWeek = cellIdx > 0 && cellIdx % 5 === 0;
+      const cc=['day-cell',isToday(d)?'is-today':'',isFirstOfWeek?'week-start':''].filter(Boolean).join(' ');
       h+=`<div class="${cc}" onclick="openNew('${xe(row.matches[0])}','${ds}')">`;
       jobs.forEach(j=>{
         const bg=jobColor(j);
@@ -483,6 +497,7 @@ function toast(msg,type='success') {
 }
 
 initMsal();
+window.addEventListener('resize', ()=>{ if(allJobs.length) renderCal(); });
 </script>
 </body>
 </html>
