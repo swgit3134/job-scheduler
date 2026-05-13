@@ -88,7 +88,7 @@ body { font-family: 'Saira', 'Segoe UI', Arial, sans-serif; background: #f0f4f8;
 .crew-select { position:relative; }
 .crew-input { display:flex; align-items:center; padding:7px 10px; border:1px solid #ccc; border-radius:5px; font-size:13px; cursor:pointer; background:white; min-height:36px; }
 .crew-input:hover { border-color:#0039a5; }
-.crew-dropdown { position:absolute; top:100%; left:0; right:0; background:white; border:1px solid #ccc; border-top:none; border-radius:0 0 5px 5px; z-index:200; max-height:220px; overflow-y:auto; box-shadow:0 4px 12px rgba(0,0,0,0.12); }
+.crew-dropdown { position:absolute; top:100%; left:0; right:0; background:white; border:1px solid #ccc; border-top:none; border-radius:0 0 5px 5px; z-index:200; box-shadow:0 4px 12px rgba(0,0,0,0.12); }
 .crew-option { display:flex; align-items:center; gap:8px; padding:7px 10px; font-size:13px; cursor:pointer; }
 .crew-option:hover { background:#f0f7ff; }
 .crew-option input[type=checkbox] { width:14px; height:14px; accent-color:#0039a5; flex-shrink:0; }
@@ -773,34 +773,42 @@ function renderCrewList(filter) {
   const f = filter.toLowerCase();
   list.innerHTML = CREW_LIST
     .filter(c => c.toLowerCase().includes(f))
-    .map(c => `<div class="crew-option" onclick="toggleCrewMember('${c}', ${!selectedCrew.includes(c)})" style="cursor:pointer">
-      <input type="radio" ${selectedCrew.includes(c)?'checked':''} style="accent-color:#0039a5;pointer-events:none">
-      <span>${c}</span>
+    .map(c => `<div class="crew-option" data-crew="${c}" style="cursor:pointer">
+      <input type="checkbox" ${selectedCrew.includes(c)?'checked':''} style="accent-color:#0039a5;pointer-events:none" tabindex="-1">
+      <span style="pointer-events:none">${c}</span>
     </div>`).join('');
+
+  // Event delegation — toggle checkbox on div click, no double-fire
+  list.onclick = function(e) {
+    const opt = e.target.closest('.crew-option');
+    if (!opt) return;
+    const name = opt.getAttribute('data-crew');
+    if (!name) return;
+    if (selectedCrew.includes(name)) {
+      selectedCrew = selectedCrew.filter(c => c !== name);
+    } else {
+      selectedCrew.push(name);
+    }
+    updateCrewDisplay();
+    renderCrewList(document.getElementById('crew-search')?.value || '');
+  };
 }
 
 function filterCrew() {
   renderCrewList(document.getElementById('crew-search').value);
 }
 
-function toggleCrewMember(name, checked) {
-  // Crew is a Choice field in SP - only one value allowed
-  if (checked) {
-    selectedCrew = [name]; // replace, don't append
-  } else {
-    selectedCrew = selectedCrew.filter(c => c !== name);
-  }
+function toggleCrewMember(name) {
+  if (selectedCrew.includes(name)) selectedCrew = selectedCrew.filter(c => c !== name);
+  else selectedCrew.push(name);
   updateCrewDisplay();
-  renderCrewList(document.getElementById('crew-search')?.value || '');
-  // Close dropdown after selection
-  document.getElementById('crew-dropdown').style.display = 'none';
 }
 
 function updateCrewDisplay() {
   const ph = document.getElementById('crew-placeholder');
   const tx = document.getElementById('crew-selected-text');
   if (selectedCrew.length === 0) { ph.style.display=''; tx.style.display='none'; }
-  else { ph.style.display='none'; tx.style.display=''; tx.textContent = selectedCrew[0]; }
+  else { ph.style.display='none'; tx.style.display=''; tx.textContent = selectedCrew.join(', '); }
 }
 
 function applyColorName() {
