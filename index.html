@@ -303,13 +303,49 @@ async function gfetch(method,path,body) {
   const o={method,headers:{Authorization:`Bearer ${t}`,'Content-Type':'application/json'}};
   if(body) o.body=JSON.stringify(body);
   const r=await fetch(`https://graph.microsoft.com/v1.0${path}`,o);
-  if(!r.ok) throw new Error(await r.text());
+  if(!r.ok) {
+    const errText = await r.text();
+    // Try to extract a meaningful message from the Graph API error
+    try {
+      const errJson = JSON.parse(errText);
+      const msg = errJson?.error?.message || errJson?.message || errText;
+      throw new Error(`${r.status}: ${msg}`);
+    } catch(pe) {
+      if(pe.message.startsWith(r.status+':')) throw pe;
+      throw new Error(`${r.status}: ${errText}`);
+    }
+  }
   return r.status===204?{}:r.json();
 }
 async function getSite() {
   if(!siteId) siteId=(await gfetch('GET',`/sites/${SITE_URL}`)).id;
   return siteId;
 }
+
+// Real internal field names fetched from SP (populated on first load)
+let fieldMap = {}; // displayName.toLowerCase() -> internalName
+
+async function loadFieldMap() {
+  try {
+    const sid = await getSite();
+    const cols = await gfetch('GET', `/sites/${sid}/lists/${LIST_NAME}/columns`);
+    cols.value.forEach(c => { fieldMap[c.displayName.toLowerCase()] = c.name; });
+    console.log('SP field map loaded:', fieldMap);
+  } catch(e) { console.warn('Could not load field map:', e.message); }
+}
+
+// Get internal name for a field by its display name (fallback to encoded name)
+function fn(displayName) {
+  return fieldMap[displayName.toLowerCase()] || displayName;
+}
+
+// Helper: call this from console to see real SP field names: checkFields()
+window.checkFields = async function() {
+  const sid = await getSite();
+  const cols = await gfetch('GET', `/sites/${sid}/lists/${LIST_NAME}/columns`);
+  console.table(cols.value.map(c=>({displayName:c.displayName, internalName:c.name})));
+  return cols.value.map(c=>({displayName:c.displayName, internalName:c.name}));
+};
 
 // ── DATA ──────────────────────────────────────────────────────────
 async function loadJobs() {
@@ -328,7 +364,7 @@ function onIn(acc) {
   document.getElementById('login-screen').style.display='none';
   document.getElementById('app').style.display='flex';
   document.getElementById('user-name').textContent=acc.name||acc.username;
-  loadJobs();
+  loadFieldMap().then(() => loadJobs());
 }
 
 // ── CALENDAR ──────────────────────────────────────────────────────
@@ -513,8 +549,11 @@ function openEdit(id) {
   document.getElementById('f-machine').value=j.Machine||'';
   document.getElementById('f-suburb').value=j.Suburb||'';
   document.getElementById('f-notes').value=j.Notes||'';
-  document.getElementById('f-ca').checked=!!j['Client_x0020_has_x0020_approved_x0020_site_x0020_access'];
-  document.getElementById('f-bk').checked=!!j['Booking_x0020_the_x0020_subcontractor_x0020_for_x0020_service_x0020_clearance'];
+  // Read using either the real internal name or the encoded fallback
+  const caKey = fn('Client has approved site access') || 'Client_x0020_has_x0020_approved_x0020_site_x0020_access';
+  const bkKey = fn('Booking the subcontractor for service clearance') || 'Booking_x0020_the_x0020_subcontractor_x0020_for_x0020_service_x0020_clearance';
+  document.getElementById('f-ca').checked = !!(j[caKey] ?? j['Client_x0020_has_x0020_approved_x0020_site_x0020_access']);
+  document.getElementById('f-bk').checked = !!(j[bkKey] ?? j['Booking_x0020_the_x0020_subcontractor_x0020_for_x0020_service_x0020_clearance']);
   // Dates — store as date only (no time)
   document.getElementById('f-startdate').value=j.Start_x0020_Date?j.Start_x0020_Date.slice(0,10):'';
   document.getElementById('f-enddate').value=j.End_x0020_Date?j.End_x0020_Date.slice(0,10):'';
@@ -550,20 +589,19 @@ async function saveJob() {
   const suburb = document.getElementById('f-suburb').value.trim();
   // Title = JobNumber + Suburb combined, or just one of them
   const title = [jobNum, suburb].filter(Boolean).join(' - ') || machine;
-  const fields={
-    Title: title,
-    JobNumber: jobNum,
-    Status: document.getElementById('f-status').value || 'Scheduled',
-    Machine: machine,
-    Suburb: suburb,
-    Crew: selectedCrew.join(', '),
-    Color: colorName,
-    ColorCode: colorHex,
-    Notes: document.getElementById('f-notes').value,
-    TriggerFlow: false,
-    'Client_x0020_has_x0020_approved_x0020_site_x0020_access': document.getElementById('f-ca').checked,
-    'Booking_x0020_the_x0020_subcontractor_x0020_for_x0020_service_x0020_clearance': document.getElementById('f-bk').checked,
-  };
+  const fields={};
+  // Use real internal field names from SP column map
+  fields['Title'] = title;
+  fields[fn('JobNumber')||'JobNumber'] = jobNum;
+  fields[fn('Status')||'Status'] = document.getElementById('f-status').value || 'Scheduled';
+  fields[fn('Machine')||'Machine'] = machine;
+  fields[fn('Suburb')||'Suburb'] = suburb;
+  fields[fn('Crew')||'Crew'] = selectedCrew.join(', ');
+  fields[fn('Color')||'Color'] = colorName;
+  fields[fn('ColorCode')||'ColorCode'] = colorHex;
+  fields[fn('Notes')||'Notes'] = document.getElementById('f-notes').value;
+  fields[fn('Client has approved site access')||'Client_x0020_has_x0020_approved_x0020_site_x0020_access'] = document.getElementById('f-ca').checked;
+  fields[fn('Booking the subcontractor for service clearance')||'Booking_x0020_the_x0020_subcontractor_x0020_for_x0020_service_x0020_clearance'] = document.getElementById('f-bk').checked;
   const sd=document.getElementById('f-startdate').value;
   const ed=document.getElementById('f-enddate').value;
   if(sd) fields['Start_x0020_Date']=new Date(sd+'T00:00:00').toISOString();
