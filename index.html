@@ -294,12 +294,34 @@ async function signIn() {
 function signOut() { if(confirm('Sign out?')) msalInst.logoutRedirect(); }
 function loginErr(m) { const el=document.getElementById('login-error'); el.textContent=m; el.style.display='block'; }
 async function token() {
-  const a=msalInst.getAllAccounts();
-  try { return (await msalInst.acquireTokenSilent({account:a[0],scopes:SCOPES})).accessToken; }
-  catch { await msalInst.acquireTokenRedirect({scopes:SCOPES}); }
+  const a = msalInst.getAllAccounts();
+  if (!a || a.length === 0) {
+    // No account — trigger login
+    await msalInst.loginRedirect({ scopes: SCOPES });
+    return;
+  }
+  try {
+    // Try silent first (uses cached token or refreshes via refresh token)
+    const resp = await msalInst.acquireTokenSilent({ account: a[0], scopes: SCOPES });
+    if (!resp || !resp.accessToken) throw new Error('Empty token from silent');
+    return resp.accessToken;
+  } catch(silentErr) {
+    console.warn('Silent token failed, trying popup:', silentErr.message);
+    try {
+      // Popup is better than redirect here — doesn't lose app state
+      const resp = await msalInst.acquireTokenPopup({ account: a[0], scopes: SCOPES });
+      if (!resp || !resp.accessToken) throw new Error('Empty token from popup');
+      return resp.accessToken;
+    } catch(popupErr) {
+      console.error('Token acquisition failed:', popupErr.message);
+      // Last resort — full redirect login
+      await msalInst.loginRedirect({ scopes: SCOPES });
+    }
+  }
 }
 async function gfetch(method,path,body) {
-  const t=await token();
+  const t = await token();
+  if (!t) throw new Error('Could not acquire access token. Please sign in again.');
   const o={method,headers:{Authorization:`Bearer ${t}`,'Content-Type':'application/json'}};
   if(body) o.body=JSON.stringify(body);
   const r=await fetch(`https://graph.microsoft.com/v1.0${path}`,o);
