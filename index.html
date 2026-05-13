@@ -79,6 +79,21 @@ body { font-family: 'Saira', 'Segoe UI', Arial, sans-serif; background: #f0f4f8;
 .cbrow { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
 .cbrow input[type=checkbox] { width: 15px; height: 15px; accent-color: #0039a5; flex-shrink: 0; }
 .cbrow label { font-size: 13px; font-weight: 400; text-transform: none; letter-spacing: 0; margin-bottom: 0; color: #333; cursor: pointer; }
+/* Toggle switch */
+.toggle-sw { display:inline-flex; align-items:center; cursor:pointer; }
+.toggle-sw input { display:none; }
+.toggle-track { width:44px; height:24px; background:#ccc; border-radius:12px; position:relative; transition:background 0.2s; flex-shrink:0; }
+.toggle-track::after { content:''; width:20px; height:20px; background:white; border-radius:50%; position:absolute; top:2px; left:2px; transition:transform 0.2s; box-shadow:0 1px 3px rgba(0,0,0,0.3); }
+.toggle-sw input:checked + .toggle-track { background:#0039a5; }
+.toggle-sw input:checked + .toggle-track::after { transform:translateX(20px); }
+/* Crew multi-select */
+.crew-select { position:relative; }
+.crew-input { display:flex; align-items:center; padding:7px 10px; border:1px solid #ccc; border-radius:5px; font-size:13px; cursor:pointer; background:white; min-height:36px; }
+.crew-input:hover { border-color:#0039a5; }
+.crew-dropdown { position:absolute; top:100%; left:0; right:0; background:white; border:1px solid #ccc; border-top:none; border-radius:0 0 5px 5px; z-index:200; max-height:220px; overflow-y:auto; box-shadow:0 4px 12px rgba(0,0,0,0.12); }
+.crew-option { display:flex; align-items:center; gap:8px; padding:7px 10px; font-size:13px; cursor:pointer; }
+.crew-option:hover { background:#f0f7ff; }
+.crew-option input[type=checkbox] { width:14px; height:14px; accent-color:#0039a5; flex-shrink:0; }
 .mfoot { display: flex; justify-content: space-between; align-items: center; margin-top: 16px; padding-top: 14px; border-top: 1px solid #eee; }
 .btn-sv { background: #0039a5; color: white; border: none; padding: 8px 20px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; }
 .btn-sv:hover { background: #002d84; }
@@ -140,32 +155,89 @@ body { font-family: 'Saira', 'Segoe UI', Arial, sans-serif; background: #f0f4f8;
 <div id="modal-bg" class="modal-bg" style="display:none" onclick="bgClose(event)">
   <div class="modal-box">
     <div class="modal-head">
-      <h2 id="m-title">New Job</h2>
+      <h2 id="m-title">New Job Schedule</h2>
       <button class="modal-x" onclick="closeModal()">&#10005;</button>
     </div>
     <div class="fgrid">
-      <div class="fg fcol2"><label>Title *</label><input id="f-title" placeholder="Job title"></div>
-      <div class="fg"><label>Job Number</label><input id="f-jobnumber" placeholder="e.g. 31765"></div>
-      <div class="fg"><label>Status</label><select id="f-status"><option>Scheduled</option><option>In Progress</option><option>Completed</option><option>Cancelled</option></select></div>
-      <div class="fg"><label>Job Type</label><input id="f-jobtype" placeholder="e.g. E/PROBE"></div>
-      <div class="fg"><label>Machine</label><input id="f-machine" placeholder="Machine/Row"></div>
-      <div class="fg"><label>Suburb</label><input id="f-suburb" placeholder="Suburb"></div>
-      <div class="fg"><label>Crew</label><input id="f-crew" placeholder="Crew name"></div>
-      <div class="fg"><label>Color</label><input type="color" id="f-colorcode" value="#a8d5f5"></div>
-      <div class="fg"><label>Start Date</label><input type="datetime-local" id="f-startdate"></div>
-      <div class="fg"><label>End Date</label><input type="datetime-local" id="f-enddate"></div>
-      <div class="fg fcol2"><label>Notes</label><textarea id="f-notes" placeholder="Notes..."></textarea></div>
-      <div class="fg fcol2">
-        <div class="cbrow"><input type="checkbox" id="f-tf"><label for="f-tf">Trigger Flow</label></div>
-        <div class="cbrow"><input type="checkbox" id="f-ca"><label for="f-ca">Client has approved site access</label></div>
-        <div class="cbrow"><input type="checkbox" id="f-bk"><label for="f-bk">Booking the subcontractor for service clearance</label></div>
+
+      <div class="fg"><label>JobNumber</label><input id="f-jobnumber" placeholder=""></div>
+      <div class="fg" style="position:relative">
+        <label>Crew</label>
+        <div class="crew-select" id="crew-select-wrap">
+          <div class="crew-input" id="crew-display" onclick="toggleCrewDropdown()">
+            <span id="crew-placeholder" style="color:#aaa">Find items</span>
+            <span id="crew-selected-text" style="display:none"></span>
+            <span style="margin-left:auto">&#8964;</span>
+          </div>
+          <div class="crew-dropdown" id="crew-dropdown" style="display:none">
+            <input type="text" id="crew-search" placeholder="Find items" oninput="filterCrew()" style="width:100%;padding:6px 8px;border:none;border-bottom:1px solid #eee;font-size:13px;outline:none">
+            <div id="crew-list"></div>
+          </div>
+        </div>
       </div>
+
+      <div class="fg">
+        <label>Machine</label>
+        <select id="f-machine">
+          <option value="">Select</option>
+          <option value="GEOPROBE V4">GEOPROBE V4</option>
+          <option value="GEOPROBE V3">GEOPROBE V3</option>
+          <option value="HANJIN (TRUCK)">HANJIN (TRUCK)</option>
+          <option value="COM 305">COM 305</option>
+          <option value="E/PROBE">E/PROBE</option>
+          <option value="DINGO(RED)">DINGO(RED)</option>
+          <option value="DINGO(BLUE)">DINGO(BLUE)</option>
+          <option value="TBC/SI">TBC/SI</option>
+          <option value="YARD/LEAVE">YARD/LEAVE</option>
+        </select>
+      </div>
+      <div class="fg"><label>Suburb</label><input id="f-suburb" placeholder=""></div>
+
+      <div class="fg"><label>Start Date</label><input type="date" id="f-startdate"></div>
+      <div class="fg"><label>End Date</label><input type="date" id="f-enddate"></div>
+
+      <div class="fg">
+        <label>Status</label>
+        <select id="f-status">
+          <option value="">Select</option>
+          <option>Scheduled</option>
+          <option>In Progress</option>
+          <option>Completed</option>
+          <option>Cancelled</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label>Color</label>
+        <select id="f-color-name" onchange="applyColorName()">
+          <option value="">Select</option>
+          <option value="White">White</option>
+          <option value="Pink">Pink</option>
+          <option value="Blue">Blue</option>
+          <option value="Yellow">Yellow</option>
+          <option value="Green">Green</option>
+          <option value="Orange">Orange</option>
+        </select>
+      </div>
+
+      <div class="fg fcol2" style="display:flex;gap:32px;align-items:center;padding:4px 0">
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <label style="font-size:12px;color:#555;font-weight:600">Client has approved site access</label>
+          <label class="toggle-sw"><input type="checkbox" id="f-ca"><span class="toggle-track"></span></label>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <label style="font-size:12px;color:#555;font-weight:600">Subcontractor Booked</label>
+          <label class="toggle-sw"><input type="checkbox" id="f-bk"><span class="toggle-track"></span></label>
+        </div>
+      </div>
+
+      <div class="fg fcol2"><label>Notes</label><textarea id="f-notes" placeholder="" style="min-height:80px"></textarea></div>
+
     </div>
     <div class="mfoot">
       <button class="btn-dl" id="del-btn" style="display:none" onclick="deleteJob()">🗑 Delete</button>
       <div style="display:flex;gap:8px;margin-left:auto">
         <button class="btn-cn" onclick="closeModal()">Cancel</button>
-        <button class="btn-sv" id="save-btn" onclick="saveJob()">Save Job</button>
+        <button class="btn-sv" id="save-btn" onclick="saveJob()">&#128190; Save</button>
       </div>
     </div>
   </div>
@@ -185,14 +257,14 @@ const LONG_MONTHS = ['January','February','March','April','May','June','July','A
 // Row definitions: each entry is { label: display name, matches: [machine values from SharePoint] }
 // Multiple matches merge into one row. Order here = order on calendar.
 const ROW_DEFS = [
-  { label: 'GEOPROBE', matches: ['Geoprobe V3', 'GEOPROBE V3', 'geoprobe v3'] },
-  { label: 'GEOPROBE', matches: ['Geoprobe V4', 'GEOPROBE V4', 'geoprobe v4'] },
-  { label: 'HANJIN (TRACK)', matches: ['HANJIN (TRACK)', 'Hanjin (Track)', 'Hanjin (track)', 'HANJIN (TRUCK)', 'Hanjin (Truck)', 'HANJIN', 'Hanjin'] },
+  { label: 'GEOPROBE', matches: ['GEOPROBE V4', 'Geoprobe V4', 'geoprobe v4'] },
+  { label: 'GEOPROBE', matches: ['GEOPROBE V3', 'Geoprobe V3', 'geoprobe v3'] },
+  { label: 'HANJIN (TRACK)', matches: ['HANJIN (TRUCK)', 'Hanjin (Truck)', 'HANJIN (TRACK)', 'Hanjin (Track)', 'HANJIN', 'Hanjin'] },
   { label: 'COM 305', matches: ['COM 305', 'Com 305'] },
   { label: 'E/PROBE', matches: ['E/PROBE', 'E/Probe', 'e/probe'] },
-  { label: 'DINGO', matches: ['Dingo(Blue)', 'Dingo (Blue)', 'DINGO (BLUE)', 'Dingo(Red)', 'Dingo (Red)', 'DINGO (RED)', 'DINGO', 'Dingo'] },
-  { label: 'TBC / SI', matches: ['Site Inspection', 'site inspection', 'TBC', 'tbc'] },
-  { label: 'Yard / Leave', matches: ['Yard / Leave', 'Yard/Leave', 'yard / leave'] },
+  { label: 'DINGO', matches: ['DINGO(RED)', 'Dingo(Red)', 'Dingo (Red)', 'DINGO(BLUE)', 'Dingo(Blue)', 'Dingo (Blue)', 'DINGO', 'Dingo'] },
+  { label: 'TBC / SI', matches: ['TBC/SI', 'TBC', 'tbc', 'Site Inspection', 'site inspection'] },
+  { label: 'YARD / LEAVE', matches: ['YARD/LEAVE', 'Yard/Leave', 'Yard / Leave', 'yard / leave'] },
 ];
 
 const msalCfg = {
@@ -401,14 +473,14 @@ function toggleFilter() {
 // ── MODAL ──────────────────────────────────────────────────────────
 function openNew(machine,dateStr) {
   editId=null;
-  document.getElementById('m-title').textContent='New Job';
-  document.getElementById('save-btn').textContent='Save Job';
+  document.getElementById('m-title').textContent='New Job Schedule';
+  document.getElementById('save-btn').innerHTML='&#128190; Save';
   document.getElementById('del-btn').style.display='none';
   clearForm();
   if(machine) document.getElementById('f-machine').value=machine;
   if(dateStr) {
-    document.getElementById('f-startdate').value=dateStr+'T08:00';
-    document.getElementById('f-enddate').value=dateStr+'T17:00';
+    document.getElementById('f-startdate').value=dateStr;
+    document.getElementById('f-enddate').value=dateStr;
   }
   document.getElementById('modal-bg').style.display='flex';
 }
@@ -417,58 +489,69 @@ function openAddModal(m,d) { openNew(m||'',d||''); }
 function openEdit(id) {
   const j=allJobs.find(x=>x.id===id); if(!j) return;
   editId=id;
-  document.getElementById('m-title').textContent='Edit Job';
-  document.getElementById('save-btn').textContent='Update Job';
+  document.getElementById('m-title').textContent='Edit Job Schedule';
+  document.getElementById('save-btn').innerHTML='&#128190; Save';
   document.getElementById('del-btn').style.display='block';
-  document.getElementById('f-title').value=j.Title||'';
   document.getElementById('f-jobnumber').value=j.JobNumber||'';
-  document.getElementById('f-status').value=j.Status||'Scheduled';
-  document.getElementById('f-jobtype').value=j.JobType||'';
+  document.getElementById('f-status').value=j.Status||'';
   document.getElementById('f-machine').value=j.Machine||'';
   document.getElementById('f-suburb').value=j.Suburb||'';
-  document.getElementById('f-crew').value=j.Crew||'';
-  document.getElementById('f-colorcode').value=j.ColorCode||'#a8d5f5';
   document.getElementById('f-notes').value=j.Notes||'';
-  document.getElementById('f-tf').checked=!!j.TriggerFlow;
   document.getElementById('f-ca').checked=!!j['Client_x0020_has_x0020_approved_x0020_site_x0020_access'];
   document.getElementById('f-bk').checked=!!j['Booking_x0020_the_x0020_subcontractor_x0020_for_x0020_service_x0020_clearance'];
-  document.getElementById('f-startdate').value=j.Start_x0020_Date?j.Start_x0020_Date.slice(0,16):'';
-  document.getElementById('f-enddate').value=j.End_x0020_Date?j.End_x0020_Date.slice(0,16):'';
+  // Dates — store as date only (no time)
+  document.getElementById('f-startdate').value=j.Start_x0020_Date?j.Start_x0020_Date.slice(0,10):'';
+  document.getElementById('f-enddate').value=j.End_x0020_Date?j.End_x0020_Date.slice(0,10):'';
+  // Color name reverse lookup
+  const cc = j.ColorCode||'';
+  const colorEntry = Object.entries(COLOR_MAP).find(([,v])=>v.toLowerCase()===cc.toLowerCase());
+  document.getElementById('f-color-name').value = colorEntry ? colorEntry[0] : '';
+  // Crew — stored as comma-separated string
+  selectedCrew = j.Crew ? j.Crew.split(',').map(c=>c.trim()).filter(Boolean) : [];
+  updateCrewDisplay();
   document.getElementById('modal-bg').style.display='flex';
 }
 
 function clearForm() {
-  ['f-title','f-jobnumber','f-jobtype','f-machine','f-suburb','f-crew','f-notes','f-startdate','f-enddate'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('f-status').value='Scheduled';
-  document.getElementById('f-colorcode').value='#a8d5f5';
-  ['f-tf','f-ca','f-bk'].forEach(id=>document.getElementById(id).checked=false);
+  ['f-jobnumber','f-suburb','f-notes','f-startdate','f-enddate'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  document.getElementById('f-machine').value='';
+  document.getElementById('f-status').value='';
+  document.getElementById('f-color-name').value='';
+  ['f-ca','f-bk'].forEach(id=>document.getElementById(id).checked=false);
+  selectedCrew=[];
+  updateCrewDisplay();
 }
 
 function closeModal() { document.getElementById('modal-bg').style.display='none'; }
 function bgClose(e) { if(e.target===document.getElementById('modal-bg')) closeModal(); }
 
 async function saveJob() {
-  const title=document.getElementById('f-title').value.trim();
-  if(!title){toast('Title is required','error');return;}
+  const machine = document.getElementById('f-machine').value;
+  if(!machine){toast('Please select a machine','error');return;}
+  const colorName = document.getElementById('f-color-name').value;
+  const colorHex = COLOR_MAP[colorName] || '#a8d5f5';
+  const jobNum = document.getElementById('f-jobnumber').value.trim();
+  const suburb = document.getElementById('f-suburb').value.trim();
+  // Title = JobNumber + Suburb combined, or just one of them
+  const title = [jobNum, suburb].filter(Boolean).join(' - ') || machine;
   const fields={
-    Title:title,
-    JobNumber:document.getElementById('f-jobnumber').value,
-    Status:document.getElementById('f-status').value,
-    JobType:document.getElementById('f-jobtype').value,
-    Machine:document.getElementById('f-machine').value,
-    Suburb:document.getElementById('f-suburb').value,
-    Crew:document.getElementById('f-crew').value,
-    Color:document.getElementById('f-colorcode').value,
-    ColorCode:document.getElementById('f-colorcode').value,
-    Notes:document.getElementById('f-notes').value,
-    TriggerFlow:document.getElementById('f-tf').checked,
-    'Client_x0020_has_x0020_approved_x0020_site_x0020_access':document.getElementById('f-ca').checked,
-    'Booking_x0020_the_x0020_subcontractor_x0020_for_x0020_service_x0020_clearance':document.getElementById('f-bk').checked,
+    Title: title,
+    JobNumber: jobNum,
+    Status: document.getElementById('f-status').value || 'Scheduled',
+    Machine: machine,
+    Suburb: suburb,
+    Crew: selectedCrew.join(', '),
+    Color: colorName,
+    ColorCode: colorHex,
+    Notes: document.getElementById('f-notes').value,
+    TriggerFlow: false,
+    'Client_x0020_has_x0020_approved_x0020_site_x0020_access': document.getElementById('f-ca').checked,
+    'Booking_x0020_the_x0020_subcontractor_x0020_for_x0020_service_x0020_clearance': document.getElementById('f-bk').checked,
   };
   const sd=document.getElementById('f-startdate').value;
   const ed=document.getElementById('f-enddate').value;
-  if(sd) fields['Start_x0020_Date']=new Date(sd).toISOString();
-  if(ed) fields['End_x0020_Date']=new Date(ed).toISOString();
+  if(sd) fields['Start_x0020_Date']=new Date(sd+'T00:00:00').toISOString();
+  if(ed) fields['End_x0020_Date']=new Date(ed+'T00:00:00').toISOString();
   const btn=document.getElementById('save-btn');
   btn.textContent='Saving...'; btn.disabled=true;
   try {
@@ -502,6 +585,74 @@ function toast(msg,type='success') {
   const t=document.getElementById('toast');
   t.textContent=msg; t.className='toast '+type; t.style.display='block';
   clearTimeout(t._t); t._t=setTimeout(()=>t.style.display='none',3500);
+}
+
+
+const COLOR_MAP = {
+  'White':  '#FFFFFF',
+  'Pink':   '#FFB6C1',
+  'Blue':   '#a8d5f5',
+  'Yellow': '#FFF9C4',
+  'Green':  '#C8E6C9',
+  'Orange': '#FFE0B2',
+};
+
+const CREW_LIST = ['Brad','Cornell','Cotter','Dash','David','Dulaj','Gayan','Javier','Nadeeka','Phil','Pasindu','Ray','Ravi','Sasika','Uchitha','Michael','Hakim'];
+let selectedCrew = [];
+
+function toggleCrewDropdown() {
+  const dd = document.getElementById('crew-dropdown');
+  if (dd.style.display === 'none') {
+    dd.style.display = 'block';
+    renderCrewList('');
+    document.getElementById('crew-search').value = '';
+    document.getElementById('crew-search').focus();
+    // Close on outside click
+    setTimeout(() => document.addEventListener('click', closeCrewOnOutside), 0);
+  } else {
+    dd.style.display = 'none';
+  }
+}
+
+function closeCrewOnOutside(e) {
+  const wrap = document.getElementById('crew-select-wrap');
+  if (!wrap.contains(e.target)) {
+    document.getElementById('crew-dropdown').style.display = 'none';
+    document.removeEventListener('click', closeCrewOnOutside);
+  }
+}
+
+function renderCrewList(filter) {
+  const list = document.getElementById('crew-list');
+  const f = filter.toLowerCase();
+  list.innerHTML = CREW_LIST
+    .filter(c => c.toLowerCase().includes(f))
+    .map(c => `<div class="crew-option">
+      <input type="checkbox" ${selectedCrew.includes(c)?'checked':''} onchange="toggleCrewMember('${c}',this.checked)">
+      <span>${c}</span>
+    </div>`).join('');
+}
+
+function filterCrew() {
+  renderCrewList(document.getElementById('crew-search').value);
+}
+
+function toggleCrewMember(name, checked) {
+  if (checked && !selectedCrew.includes(name)) selectedCrew.push(name);
+  else if (!checked) selectedCrew = selectedCrew.filter(c => c !== name);
+  updateCrewDisplay();
+}
+
+function updateCrewDisplay() {
+  const ph = document.getElementById('crew-placeholder');
+  const tx = document.getElementById('crew-selected-text');
+  if (selectedCrew.length === 0) { ph.style.display=''; tx.style.display='none'; }
+  else { ph.style.display='none'; tx.style.display=''; tx.textContent = selectedCrew.join(', '); }
+}
+
+function applyColorName() {
+  const name = document.getElementById('f-color-name').value;
+  // colorcode is stored internally but not shown as a picker anymore
 }
 
 initMsal();
