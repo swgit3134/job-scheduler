@@ -80,10 +80,12 @@ body { font-family: 'Saira', 'Segoe UI', Arial, sans-serif; background: #f0f4f8;
 /* Toggle switch */
 .toggle-sw { display:inline-flex; align-items:center; cursor:pointer; }
 .toggle-sw input { display:none; }
-.toggle-track { width:44px; height:24px; background:#ccc; border-radius:12px; position:relative; transition:background 0.2s; flex-shrink:0; }
-.toggle-track::after { content:''; width:20px; height:20px; background:white; border-radius:50%; position:absolute; top:2px; left:2px; transition:transform 0.2s; box-shadow:0 1px 3px rgba(0,0,0,0.3); }
+.toggle-track { width:48px; height:26px; background:#ccc; border-radius:13px; position:relative; transition:background 0.25s; flex-shrink:0; box-shadow:inset 0 1px 3px rgba(0,0,0,0.2); }
+.toggle-track::after { content:''; width:22px; height:22px; background:white; border-radius:50%; position:absolute; top:2px; left:2px; transition:transform 0.25s; box-shadow:0 1px 4px rgba(0,0,0,0.3); }
 .toggle-sw input:checked + .toggle-track { background:#0039a5; }
-.toggle-sw input:checked + .toggle-track::after { transform:translateX(20px); }
+.toggle-sw input:checked + .toggle-track::after { transform:translateX(22px); }
+.toggle-group { display:flex; flex-direction:column; gap:6px; }
+.toggle-row { display:flex; align-items:center; gap:10px; }
 /* Crew multi-select */
 .crew-select { position:relative; }
 .crew-input { display:flex; align-items:center; padding:7px 10px; border:1px solid #ccc; border-radius:5px; font-size:13px; cursor:pointer; background:white; min-height:36px; }
@@ -215,14 +217,14 @@ body { font-family: 'Saira', 'Segoe UI', Arial, sans-serif; background: #f0f4f8;
         </select>
       </div>
 
-      <div class="fg fcol2" style="display:flex;gap:32px;align-items:center;padding:4px 0">
-        <div style="display:flex;flex-direction:column;gap:4px">
-          <label style="font-size:12px;color:#555;font-weight:600">Client has approved site access</label>
+      <div class="fg fcol2" style="display:flex;gap:40px;align-items:center;padding:6px 0">
+        <div class="toggle-row">
           <label class="toggle-sw"><input type="checkbox" id="f-ca"><span class="toggle-track"></span></label>
+          <span style="font-size:12px;font-weight:600;color:#333">Client has approved site access</span>
         </div>
-        <div style="display:flex;flex-direction:column;gap:4px">
-          <label style="font-size:12px;color:#555;font-weight:600">Subcontractor Booked</label>
+        <div class="toggle-row">
           <label class="toggle-sw"><input type="checkbox" id="f-bk"><span class="toggle-track"></span></label>
+          <span style="font-size:12px;font-weight:600;color:#333">Subcontractor Booked</span>
         </div>
       </div>
 
@@ -598,9 +600,11 @@ function renderCal() {
       jobs.forEach(j=>{
         const bg=jobColor(j);
         const tc=isLight(bg)?'#111':'#fff';
+        const clientOk = j['Client_x0020_has_x0020_approved_'];
+        const titleColor = clientOk ? tc : '#cc0000';
         h+=`<div class="jcard" data-jobid="${j.id}" style="background:${bg};color:${tc}">`
-        +`<div class="jn" style="pointer-events:none">${xe(j.JobNumber||"")}${j.JobNumber&&j.Suburb?" - ":""}${xe(j.Suburb||j.Title||"")}</div>`
-        +(j.Crew?`<div class="jc" style="pointer-events:none">${xe(Array.isArray(j.Crew)?j.Crew.join(', '):(j.Crew+'').replace(/;#/g,', '))}</div>`:"")
+        +`<div class="jn" style="pointer-events:none;color:${titleColor}">${xe(j.JobNumber||"")}${j.JobNumber&&j.Suburb?" - ":""}${xe(j.Suburb||j.Title||"")}</div>`
+        +((j.CrewText||j.Crew)?`<div class="jc" style="pointer-events:none">${xe(j.CrewText||(Array.isArray(j.Crew)?j.Crew.join(', '):(j.Crew+'').replace(/;#/g,', ')))}</div>`:"")
         +`</div>`;
       });
       h+=`</div>`;
@@ -680,12 +684,12 @@ function openEdit(id) {
   const colorEntry = Object.entries(COLOR_MAP).find(([,v])=>v.toLowerCase()===cc.toLowerCase());
   document.getElementById('f-color-name').value = colorEntry ? colorEntry[0] : '';
   // Crew — stored as comma-separated string
-  // SP multi-select Choice: returned as array or ;# separated string
-  if (Array.isArray(j.Crew)) {
-    selectedCrew = j.Crew.filter(Boolean);
-  } else if (j.Crew && typeof j.Crew === 'string') {
-    // Handle ;# separator and strip empty parts
-    selectedCrew = j.Crew.split(/;#|;|,/).map(c=>c.trim()).filter(Boolean);
+  // Read from CrewText (plain text, comma-separated)
+  const crewSource = j.CrewText || j.Crew || '';
+  if (Array.isArray(crewSource)) {
+    selectedCrew = crewSource.filter(Boolean);
+  } else if (crewSource) {
+    selectedCrew = crewSource.split(/;#|;|,/).map(c=>c.trim()).filter(Boolean);
   } else {
     selectedCrew = [];
   }
@@ -720,8 +724,8 @@ async function saveJob() {
   fields['Machine'] = machine;
   if(suburb)   fields['Suburb'] = suburb;
   // SP multi-select Choice field requires array format
-  // SP multi-select Choice via Graph API: use ;# separator (SP internal format)
-  if(selectedCrew.length > 0) fields['Crew'] = selectedCrew.join(';#');
+  // Save crew as plain text to CrewText column
+  if(selectedCrew.length > 0) fields['CrewText'] = selectedCrew.join(', ');
   if(colorName && colorName !== '') {
     fields['Color'] = colorName;
     fields['ColorCode'] = colorHex;
