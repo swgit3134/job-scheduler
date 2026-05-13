@@ -266,7 +266,7 @@ const ROW_DEFS = [
 
 const msalCfg = {
   auth: { clientId: CLIENT_ID, authority: `https://login.microsoftonline.com/${TENANT_ID}`, redirectUri: window.location.origin + window.location.pathname },
-  cache: { cacheLocation: 'sessionStorage', storeAuthStateInCookie: false }
+  cache: { cacheLocation: 'localStorage', storeAuthStateInCookie: true }
 };
 const SCOPES = ['Sites.ReadWrite.All','User.Read'];
 let msalInst=null, allJobs=[], editId=null, siteId=null, weekOff=0, filterOn=false;
@@ -278,46 +278,75 @@ async function initMsal() {
     btn.disabled = true; btn.textContent = 'Loading...';
     msalInst = new msal.PublicClientApplication(msalCfg);
     await msalInst.initialize();
-    const r = await msalInst.handleRedirectPromise();
-    if (r?.account) { onIn(r.account); return; }
+    // Handle redirect response (if returning from a redirect login)
+    try {
+      const r = await msalInst.handleRedirectPromise();
+      if (r?.account && r?.accessToken) { onIn(r.account); return; }
+    } catch(re) { console.warn('handleRedirectPromise:', re.message); }
+    // Check for existing cached accounts
     const accs = msalInst.getAllAccounts();
-    if (accs.length) { onIn(accs[0]); return; }
+    if (accs.length > 0) {
+      // Verify we can actually get a token before showing the app
+      try {
+        const testResp = await msalInst.acquireTokenSilent({ account: accs[0], scopes: SCOPES });
+        if (testResp?.accessToken && testResp.accessToken.length > 20) {
+          onIn(accs[0]); return;
+        }
+      } catch(te) { console.warn('Cached account token test failed:', te.message); }
+    }
     btn.disabled = false;
     btn.innerHTML = `<svg viewBox="0 0 21 21" width="20" height="20"><rect x="1" y="1" width="9" height="9" fill="#f25022"/><rect x="11" y="1" width="9" height="9" fill="#7fba00"/><rect x="1" y="11" width="9" height="9" fill="#00a4ef"/><rect x="11" y="11" width="9" height="9" fill="#ffb900"/></svg> Sign in with Microsoft`;
   } catch(e) { loginErr('Init error: '+e.message); document.getElementById('login-btn').disabled=false; }
 }
 async function signIn() {
   if (!msalInst) return;
-  try { document.getElementById('login-btn').disabled=true; document.getElementById('login-btn').textContent='Redirecting...'; await msalInst.loginRedirect({scopes:SCOPES}); }
-  catch(e) { loginErr('Sign-in failed: '+e.message); document.getElementById('login-btn').disabled=false; }
+  try {
+    document.getElementById('login-btn').disabled=true;
+    document.getElementById('login-btn').textContent='Signing in...';
+    // Use POPUP - avoids page reload losing token context on Azure Static Web Apps
+    const resp = await msalInst.loginPopup({ scopes: SCOPES });
+    if (resp?.account) { onIn(resp.account); return; }
+    loginErr('Sign-in did not return an account. Please try again.');
+    document.getElementById('login-btn').disabled=false;
+  } catch(e) {
+    if (e.message && e.message.includes('popup_window_error')) {
+      // Popup blocked - fall back to redirect
+      loginErr('Popup was blocked. Allow popups for this site and try again, or click to continue with redirect.');
+      document.getElementById('login-btn').disabled=false;
+      document.getElementById('login-btn').textContent='Try redirect sign-in';
+      document.getElementById('login-btn').onclick = async () => {
+        await msalInst.loginRedirect({scopes:SCOPES});
+      };
+    } else {
+      loginErr('Sign-in failed: '+e.message);
+      document.getElementById('login-btn').disabled=false;
+    }
+  }
 }
 function signOut() { if(confirm('Sign out?')) msalInst.logoutRedirect(); }
 function loginErr(m) { const el=document.getElementById('login-error'); el.textContent=m; el.style.display='block'; }
 async function token() {
-  const a = msalInst.getAllAccounts();
-  if (!a || a.length === 0) {
-    // No account — trigger login
-    await msalInst.loginRedirect({ scopes: SCOPES });
-    return;
+  const accounts = msalInst.getAllAccounts();
+  if (!accounts || accounts.length === 0) {
+    throw new Error('Not signed in. Please refresh and sign in again.');
   }
+  const account = accounts[0];
+  // Try silent (cached)
   try {
-    // Try silent first (uses cached token or refreshes via refresh token)
-    const resp = await msalInst.acquireTokenSilent({ account: a[0], scopes: SCOPES });
-    if (!resp || !resp.accessToken) throw new Error('Empty token from silent');
-    return resp.accessToken;
-  } catch(silentErr) {
-    console.warn('Silent token failed, trying popup:', silentErr.message);
-    try {
-      // Popup is better than redirect here — doesn't lose app state
-      const resp = await msalInst.acquireTokenPopup({ account: a[0], scopes: SCOPES });
-      if (!resp || !resp.accessToken) throw new Error('Empty token from popup');
-      return resp.accessToken;
-    } catch(popupErr) {
-      console.error('Token acquisition failed:', popupErr.message);
-      // Last resort — full redirect login
-      await msalInst.loginRedirect({ scopes: SCOPES });
-    }
-  }
+    const resp = await msalInst.acquireTokenSilent({ account, scopes: SCOPES, forceRefresh: false });
+    if (resp?.accessToken && resp.accessToken.length > 20) return resp.accessToken;
+  } catch(e1) { console.warn('Silent token failed:', e1.message); }
+  // Try silent force-refresh
+  try {
+    const resp = await msalInst.acquireTokenSilent({ account, scopes: SCOPES, forceRefresh: true });
+    if (resp?.accessToken && resp.accessToken.length > 20) return resp.accessToken;
+  } catch(e2) { console.warn('Force refresh failed:', e2.message); }
+  // Popup re-auth
+  try {
+    const resp = await msalInst.acquireTokenPopup({ account, scopes: SCOPES });
+    if (resp?.accessToken && resp.accessToken.length > 20) return resp.accessToken;
+  } catch(e3) { console.warn('Popup failed:', e3.message); }
+  throw new Error('Session expired. Please sign out and sign in again.');
 }
 async function gfetch(method,path,body) {
   const t = await token();
@@ -591,10 +620,13 @@ function openEdit(id) {
   document.getElementById('f-suburb').value=j.Suburb||'';
   document.getElementById('f-notes').value=j.Notes||'';
   // Read using either the real internal name or the encoded fallback
-  const caKey = fn('Client has approved site access') || 'Client_x0020_has_x0020_approved_x0020_site_x0020_access';
-  const bkKey = fn('Booking the subcontractor for service clearance') || 'Booking_x0020_the_x0020_subcontractor_x0020_for_x0020_service_x0020_clearance';
-  document.getElementById('f-ca').checked = !!(j[caKey] ?? j['Client_x0020_has_x0020_approved_x0020_site_x0020_access']);
-  document.getElementById('f-bk').checked = !!(j[bkKey] ?? j['Booking_x0020_the_x0020_subcontractor_x0020_for_x0020_service_x0020_clearance']);
+  // Read boolean fields — try fieldMap name first, then encoded fallback, then raw key search
+  const caField = fieldMap['client has approved site access'];
+  const bkField = fieldMap['booking the subcontractor for service clearance'];
+  const caVal = caField ? j[caField] : (j['Client_x0020_has_x0020_approved_'] ?? Object.values(j).find((v,i)=>Object.keys(j)[i].toLowerCase().includes('approved')));
+  const bkVal = bkField ? j[bkField] : (j['Booking_x0020_the_x0020_subcontr'] ?? Object.values(j).find((v,i)=>Object.keys(j)[i].toLowerCase().includes('subcontractor')));
+  document.getElementById('f-ca').checked = !!caVal;
+  document.getElementById('f-bk').checked = !!bkVal;
   // Dates — store as date only (no time)
   document.getElementById('f-startdate').value=j.Start_x0020_Date?j.Start_x0020_Date.slice(0,10):'';
   document.getElementById('f-enddate').value=j.End_x0020_Date?j.End_x0020_Date.slice(0,10):'';
@@ -630,32 +662,44 @@ async function saveJob() {
   const suburb = document.getElementById('f-suburb').value.trim();
   // Title = JobNumber + Suburb combined, or just one of them
   const title = [jobNum, suburb].filter(Boolean).join(' - ') || machine;
-  const fields={};
-  // Use real internal field names from SP column map
-  fields['Title'] = title;
-  fields[fn('JobNumber')||'JobNumber'] = jobNum;
-  fields[fn('Status')||'Status'] = document.getElementById('f-status').value || 'Scheduled';
-  fields[fn('Machine')||'Machine'] = machine;
-  fields[fn('Suburb')||'Suburb'] = suburb;
-  fields[fn('Crew')||'Crew'] = selectedCrew.join(', ');
-  fields[fn('Color')||'Color'] = colorName;
-  fields[fn('ColorCode')||'ColorCode'] = colorHex;
-  fields[fn('Notes')||'Notes'] = document.getElementById('f-notes').value;
-  fields[fn('Client has approved site access')||'Client_x0020_has_x0020_approved_x0020_site_x0020_access'] = document.getElementById('f-ca').checked;
-  fields[fn('Booking the subcontractor for service clearance')||'Booking_x0020_the_x0020_subcontractor_x0020_for_x0020_service_x0020_clearance'] = document.getElementById('f-bk').checked;
+  // Use only the minimal safe fields — Title is required, others use SP internal names
+  const fields = {
+    Title:      title,
+    JobNumber:  jobNum,
+    Status:     document.getElementById('f-status').value || 'Scheduled',
+    Machine:    machine,
+    Suburb:     suburb,
+    Crew:       selectedCrew.join(', '),
+    Color:      colorName,
+    ColorCode:  colorHex,
+    Notes:      document.getElementById('f-notes').value,
+  };
   const sd=document.getElementById('f-startdate').value;
   const ed=document.getElementById('f-enddate').value;
-  if(sd) fields['Start_x0020_Date']=new Date(sd+'T00:00:00').toISOString();
-  if(ed) fields['End_x0020_Date']=new Date(ed+'T00:00:00').toISOString();
+  if(sd) fields['Start_x0020_Date'] = new Date(sd+'T00:00:00').toISOString();
+  if(ed) fields['End_x0020_Date']   = new Date(ed+'T00:00:00').toISOString();
+
+  // Add boolean fields only if fieldMap has confirmed their internal names
+  // otherwise skip them to avoid bad field name errors
+  // Confirmed truncated SP internal names (32 char limit)
+  fields['Client_x0020_has_x0020_approved_'] = document.getElementById('f-ca').checked;
+  fields['Booking_x0020_the_x0020_subcontr'] = document.getElementById('f-bk').checked;
+
+  console.log('Saving fields:', JSON.stringify(fields));
   const btn=document.getElementById('save-btn');
-  btn.textContent='Saving...'; btn.disabled=true;
+  btn.innerHTML='Saving...'; btn.disabled=true;
   try {
     const sid=await getSite();
-    if(editId) { await gfetch('PATCH',`/sites/${sid}/lists/${LIST_NAME}/items/${editId}/fields`,fields); toast('Job updated ✓','success'); }
-    else { await gfetch('POST',`/sites/${sid}/lists/${LIST_NAME}/items`,{fields}); toast('Job created ✓','success'); }
+    if(editId) {
+      await gfetch('PATCH',`/sites/${sid}/lists/${LIST_NAME}/items/${editId}/fields`,fields);
+      toast('Job updated ✓','success');
+    } else {
+      await gfetch('POST',`/sites/${sid}/lists/${LIST_NAME}/items`,{fields});
+      toast('Job created ✓','success');
+    }
     closeModal(); loadJobs();
   } catch(e) { toast('Error: '+e.message,'error'); }
-  btn.textContent=editId?'Update Job':'Save Job'; btn.disabled=false;
+  btn.innerHTML=editId?'&#128190; Save':'&#128190; Save'; btn.disabled=false;
 }
 
 async function deleteJob() {
