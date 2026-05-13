@@ -55,7 +55,7 @@ body { font-family: 'Saira', 'Segoe UI', Arial, sans-serif; background: #f0f4f8;
 .cal-date-cell.week-start, .day-cell.week-start { border-left: 3px solid #0039a5 !important; }
 .cal-date-cell.week-start { background: #002d84; }
 
-.jcard { border-radius: 3px; padding: 3px 5px; margin-bottom: 2px; cursor: pointer; border-left: 3px solid rgba(0,0,0,0.18); }
+.jcard { border-radius: 3px; padding: 3px 5px; margin-bottom: 2px; cursor: pointer; border-left: 3px solid rgba(0,0,0,0.25); border: 1px solid rgba(0,0,0,0.12); border-left: 3px solid rgba(0,0,0,0.25); }
 .jcard:hover { filter: brightness(0.9); }
 .jcard .jn { font-size: 10px; font-weight: 700; line-height: 1.3; }
 .jcard .js { font-size: 9.5px; opacity: 0.8; }
@@ -473,7 +473,10 @@ function jobOnDate(j,d) {
 
 function jobColor(j) {
   if(j.ColorCode&&j.ColorCode.match(/^#[0-9a-fA-F]{6}$/)) return j.ColorCode;
-  return '#bbdefb'; // default light blue if no ColorCode set
+  // Map Color name to hex if ColorCode not set
+  const colorName = (j.Color||'').trim();
+  if(colorName && COLOR_MAP[colorName]) return COLOR_MAP[colorName];
+  return '#FFFFFF'; // default white
 }
 
 function isLight(hex) {
@@ -668,7 +671,7 @@ async function saveJob() {
   const jobNum = document.getElementById('f-jobnumber').value.trim();
   const suburb = document.getElementById('f-suburb').value.trim();
   // Title = JobNumber + Suburb combined, or just one of them
-  const title = [jobNum, suburb].filter(Boolean).join(' - ') || machine;
+  const title = jobNum || [suburb, machine].filter(Boolean).join(' - ') || machine;
   // Build fields object - only include fields with values to avoid SP rejecting empty strings
   const fields = { Title: title };
   if(jobNum)   fields['JobNumber'] = jobNum;
@@ -733,7 +736,7 @@ function toast(msg,type='success') {
 
 const COLOR_MAP = {
   'White':  '#FFFFFF',
-  'Pink':   '#FFB6C1',
+  'Pink':   '#FFC0CB',
   'Blue':   '#a8d5f5',
   'Yellow': '#FFF9C4',
   'Green':  '#C8E6C9',
