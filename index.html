@@ -600,7 +600,7 @@ function renderCal() {
         const tc=isLight(bg)?'#111':'#fff';
         h+=`<div class="jcard" data-jobid="${j.id}" style="background:${bg};color:${tc}">`
         +`<div class="jn" style="pointer-events:none">${xe(j.JobNumber||"")}${j.JobNumber&&j.Suburb?" - ":""}${xe(j.Suburb||j.Title||"")}</div>`
-        +(j.Crew?`<div class="jc" style="pointer-events:none">${xe(j.Crew)}</div>`:"")
+        +(j.Crew?`<div class="jc" style="pointer-events:none">${xe(Array.isArray(j.Crew)?j.Crew.join(', '):(j.Crew+'').replace(/;#/g,', '))}</div>`:"")
         +`</div>`;
       });
       h+=`</div>`;
@@ -680,11 +680,12 @@ function openEdit(id) {
   const colorEntry = Object.entries(COLOR_MAP).find(([,v])=>v.toLowerCase()===cc.toLowerCase());
   document.getElementById('f-color-name').value = colorEntry ? colorEntry[0] : '';
   // Crew — stored as comma-separated string
-  // SP multi-select Choice returns array or semicolon-separated string
+  // SP multi-select Choice: returned as array or ;# separated string
   if (Array.isArray(j.Crew)) {
     selectedCrew = j.Crew.filter(Boolean);
   } else if (j.Crew && typeof j.Crew === 'string') {
-    selectedCrew = j.Crew.split(/[;,]/).map(c=>c.trim()).filter(Boolean);
+    // Handle ;# separator and strip empty parts
+    selectedCrew = j.Crew.split(/;#|;|,/).map(c=>c.trim()).filter(Boolean);
   } else {
     selectedCrew = [];
   }
@@ -719,8 +720,8 @@ async function saveJob() {
   fields['Machine'] = machine;
   if(suburb)   fields['Suburb'] = suburb;
   // SP multi-select Choice field requires array format
-  // Graph API multi-select Choice: send as array
-  if(selectedCrew.length > 0) fields['Crew'] = selectedCrew;
+  // SP multi-select Choice via Graph API: use ;# separator (SP internal format)
+  if(selectedCrew.length > 0) fields['Crew'] = selectedCrew.join(';#');
   if(colorName && colorName !== '') {
     fields['Color'] = colorName;
     fields['ColorCode'] = colorHex;
