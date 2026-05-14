@@ -514,7 +514,14 @@ async function loadFieldMap() {
   try {
     const sid = await getSite();
     const cols = await gfetch('GET', `/sites/${sid}/lists/${LIST_NAME}/columns`);
-    cols.value.forEach(c => { fieldMap[c.displayName.toLowerCase()] = c.name; });
+    cols.value.forEach(c => {
+      fieldMap[c.displayName.toLowerCase()] = c.name;
+      // Load Crew choices dynamically from SP column definition
+      if (c.displayName === 'Crew' && c.choice && c.choice.choices && c.choice.choices.length > 0) {
+        CREW_LIST = c.choice.choices.filter(Boolean).sort();
+        console.log('Crew list loaded from SP:', CREW_LIST);
+      }
+    });
     console.log('SP field map loaded:', fieldMap);
   } catch(e) { console.warn('Could not load field map:', e.message); }
 }
@@ -967,7 +974,7 @@ const COLOR_MAP = {
   'Orange': '#FFA500',
 };
 
-const CREW_LIST = ['Brad','Cornell','Cotter','Dash','David','Dulaj','Gayan','Javier','Nadeeka','Phil','Pasindu','Ray','Ravi','Sasika','Uchitha','Michael','Hakim'];
+let CREW_LIST = ['Brad','Cornell','Cotter','Dash','David','Dulaj','Gayan','Javier','Nadeeka','Phil','Pasindu','Ray','Ravi','Sasika','Uchitha','Michael','Hakim']; // fallback
 let selectedCrew = [];
 
 function toggleCrewDropdown() {
