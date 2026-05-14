@@ -80,9 +80,26 @@ body { font-family: 'Saira', 'Segoe UI', Arial, sans-serif; background: #f0f4f8;
 /* Toggle switch */
 .toggle-sw { display:inline-flex; align-items:center; cursor:pointer; }
 .toggle-sw input { display:none; }
-.toggle-track { width:52px; height:28px; background:#d0d0d0; border-radius:14px; position:relative; transition:background 0.25s; flex-shrink:0; border:1px solid #bbb; }
-.toggle-track::after { content:''; width:24px; height:24px; background:white; border-radius:50%; position:absolute; top:1px; left:1px; transition:transform 0.25s; box-shadow:0 2px 5px rgba(0,0,0,0.25); }
-.toggle-sw input:checked + .toggle-track { background:#0039a5; border-color:#002d84; }
+.toggle-track {
+  width:50px; height:26px;
+  background:#b0b8c1;
+  border-radius:13px;
+  position:relative;
+  transition:background 0.3s;
+  flex-shrink:0;
+  box-shadow:inset 0 1px 3px rgba(0,0,0,0.15);
+}
+.toggle-track::after {
+  content:'';
+  width:22px; height:22px;
+  background:white;
+  border-radius:50%;
+  position:absolute;
+  top:2px; left:2px;
+  transition:transform 0.3s cubic-bezier(.4,0,.2,1);
+  box-shadow:0 2px 6px rgba(0,0,0,0.3);
+}
+.toggle-sw input:checked + .toggle-track { background:#0039a5; }
 .toggle-sw input:checked + .toggle-track::after { transform:translateX(24px); }
 .toggle-group { display:flex; flex-direction:column; gap:8px; align-items:flex-start; }
 .toggle-row { display:flex; align-items:center; gap:10px; }
