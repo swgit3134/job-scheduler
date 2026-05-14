@@ -103,6 +103,34 @@ body { font-family: 'Saira', 'Segoe UI', Arial, sans-serif; background: #f0f4f8;
 .toggle-sw input:checked + .toggle-track::after { transform:translateX(24px); }
 .toggle-group { display:flex; flex-direction:column; gap:8px; align-items:flex-start; }
 .toggle-row { display:flex; align-items:center; gap:10px; }
+/* ── MOBILE ─────────────────────────────────────── */
+@media (max-width: 768px) {
+  .topbar { height:52px; padding:0 10px; gap:6px; }
+  .topbar-title { font-size:13px; }
+  .month-label { font-size:13px; min-width:100px; }
+  .nav-btn { width:28px; height:28px; font-size:18px; }
+  .btn-new { padding:6px 12px; font-size:12px; }
+  .btn-refresh { width:26px; height:26px; font-size:15px; }
+  .user-chip { font-size:10px; padding:3px 7px; display:none; }
+  .last-refresh-txt { display:none; }
+  .topbar-sep { display:none; }
+
+  .cal-corner { width:70px; min-width:70px; font-size:9px; padding:3px 4px; }
+  .cal-date-cell { font-size:10px; }
+  .cal-date-cell .d-num { font-size:13px; }
+  .cal-date-cell .d-day { font-size:9px; }
+  .cal-date-cell .d-mon { font-size:8px; }
+  .row-label { width:70px; min-width:70px; font-size:9px; padding:3px 4px; letter-spacing:0; }
+
+  .jcard { padding:2px 4px; margin-bottom:1px; }
+  .jcard .jn { font-size:9px; line-height:1.2; }
+  .jcard .jc { font-size:8px; }
+
+  .modal-box { padding:16px; max-height:95vh; }
+  .modal-head h2 { font-size:15px; }
+  .fgrid { grid-template-columns:1fr; }
+  .fcol2 { grid-column:1; }
+}
 /* Crew multi-select */
 .crew-select { position:relative; }
 .crew-input { display:flex; align-items:center; padding:7px 10px; border:1px solid #ccc; border-radius:5px; font-size:13px; cursor:pointer; background:white; min-height:36px; }
@@ -472,15 +500,18 @@ async function onIn(acc) {
 }
 
 // ── CALENDAR ──────────────────────────────────────────────────────
+function isMobileView() {
+  return (document.getElementById('cal-grid')?.parentElement?.clientWidth || window.innerWidth) < 768;
+}
+
 function getWeekDates() {
   const today=new Date(); today.setHours(0,0,0,0);
   const dow=today.getDay();
   const mon=new Date(today);
-  // weekOff*1 = shift by 1 week per arrow click
   mon.setDate(today.getDate()-(dow===0?6:dow-1)+weekOff*7);
-  // Build 4 weeks of Mon–Fri only (20 days), with week metadata
+  const weeksToShow = isMobileView() ? 1 : 4;
   const dates=[];
-  for(let w=0;w<4;w++){
+  for(let w=0;w<weeksToShow;w++){
     for(let d=0;d<5;d++){
       const day=new Date(mon);
       day.setDate(mon.getDate()+w*7+d);
@@ -574,16 +605,18 @@ function renderCal() {
     : MONTHS[f.getMonth()]+' – '+MONTHS[l.getMonth()]+' '+l.getFullYear();
   document.getElementById('month-label').textContent=ml;
 
-  // Columns fill screen width
+  // Columns fill screen width — 1 week on mobile, 4 on desktop
   const wrapEl = document.getElementById('cal-grid').parentElement;
   const wrapWidth = wrapEl.clientWidth || window.innerWidth;
-  const labelW = 120;
-  const colW = Math.max(72, Math.floor((wrapWidth - labelW) / dates.length));
+  const isMobile = wrapWidth < 768;
+  const labelW = isMobile ? 70 : 120;
+  const colW = Math.max(isMobile ? 44 : 72, Math.floor((wrapWidth - labelW) / dates.length));
   grid.style.gridTemplateColumns = `${labelW}px repeat(${dates.length},${colW}px)`;
 
   // Dynamic row heights: each row grows with its tallest cell, but all fit on screen
-  const availH = wrapEl.clientHeight || (window.innerHeight - 66);
-  const headerH = 46;
+  const topbarH = isMobile ? 52 : 66;
+  const availH = wrapEl.clientHeight || (window.innerHeight - topbarH);
+  const headerH = isMobile ? 38 : 46;
   const totalBodyH = availH - headerH;
   // Count max jobs per row across all dates (to size each row proportionally)
   const jobsPerRow = machines.map(row => {
@@ -605,6 +638,11 @@ function renderCal() {
   const usedH = rowHeights.reduce((a,b)=>a+b,0);
   rowHeights[rowHeights.length-1] += (totalBodyH - usedH);
   grid.style.gridTemplateRows = `${headerH}px ${rowHeights.map(h=>h+'px').join(' ')}`;
+  // Update label widths dynamically for mobile
+  document.querySelectorAll('.cal-corner, .row-label').forEach(el => {
+    el.style.width = labelW+'px';
+    el.style.minWidth = labelW+'px';
+  });
 
   let h='';
 
