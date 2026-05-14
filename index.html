@@ -105,19 +105,36 @@ body { font-family: 'Saira', 'Segoe UI', Arial, sans-serif; background: #f0f4f8;
 .toggle-row { display:flex; align-items:center; gap:10px; }
 /* ── MOBILE ─────────────────────────────────────── */
 @media (max-width: 768px) {
-  /* Topbar: logo small, nav arrows centred and large */
+  /* Topbar: hide desktop brand, show mobile header row */
   .topbar {
     height: auto;
     flex-wrap: wrap;
     padding: 6px 8px;
     gap: 4px;
   }
-  .topbar-brand img { height: 28px !important; max-width: 140px !important; }
-  .topbar-title { font-size: 11px !important; letter-spacing: 0.02em; }
-  .topbar-sep { display: none; }
-  .user-chip { display: none; }
-  .last-refresh-txt { display: none; }
-  .topbar-spacer { display: none; }
+  .topbar-brand { display: none !important; }
+  .topbar-sep { display: none !important; }
+  .user-chip { display: none !important; }
+  .last-refresh-txt { display: none !important; }
+  .topbar-spacer { display: none !important; }
+  /* Mobile header: logomark + centred title */
+  .mobile-header-row {
+    display: flex !important;
+    width: 100%;
+    align-items: center;
+    justify-content: space-between;
+    order: 1;
+  }
+  .mobile-title {
+    flex: 1;
+    text-align: center;
+    font-size: 15px;
+    font-weight: 800;
+    color: white;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-family: 'Saira', sans-serif;
+  }
 
   /* Nav row: full width, centred */
   .mobile-nav-row {
@@ -221,6 +238,12 @@ body { font-family: 'Saira', 'Segoe UI', Arial, sans-serif; background: #f0f4f8;
     <button class="btn-new" onclick="openAddModal(null,null)">New</button>
     <button class="btn-refresh" onclick="loadJobs()" title="Refresh">&#8635;</button>
     <span class="user-chip" id="user-name" onclick="signOut()" title="Sign out"></span>
+    <!-- Mobile: logomark + centred title row -->
+    <div class="mobile-header-row" style="display:none">
+      <img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4NCjwhLS0gR2VuZXJhdG9yOiBBZG9iZSBJbGx1c3RyYXRvciAyNy4yLjAsIFNWRyBFeHBvcnQgUGx1Zy1JbiAuIFNWRyBWZXJzaW9uOiA2LjAwIEJ1aWxkIDApICAtLT4NCjxzdmcgdmVyc2lvbj0iMS4xIiBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayIgeD0iMHB4IiB5PSIwcHgiDQoJIHZpZXdCb3g9IjAgMCA0MzYgNDI4IiBzdHlsZT0iZW5hYmxlLWJhY2tncm91bmQ6bmV3IDAgMCA0MzYgNDI4OyIgeG1sOnNwYWNlPSJwcmVzZXJ2ZSI+DQo8c3R5bGUgdHlwZT0idGV4dC9jc3MiPg0KCS5zdDB7ZmlsbDojRkZGRkZGO30NCgkuc3Qxe2ZpbGw6Izk5OTk5OTt9DQoJLnN0MntmaWxsOiM4MDgwODA7fQ0KCS5zdDN7ZmlsbDojRTZFNkU2O30NCgkuc3Q0e2ZpbGw6I0NDQ0NDQzt9DQoJLnN0NXtmaWxsOiNCM0IzQjM7fQ0KCS5zdDZ7ZmlsbDojNjY2NjY2O30NCgkuc3Q3e2ZpbGw6IzRENEQ0RDt9DQoJLnN0OHtmaWxsOiMzMzMzMzM7fQ0KCS5zdDl7ZmlsbDojMDAwOTFBO30NCgkuc3QxMHtmaWxsOiMwMDM5QTU7fQ0KPC9zdHlsZT4NCjxnPg0KCTxwYXRoIGNsYXNzPSJzdDEwIiBkPSJNMzIwLjgxLDE0MS4wMXYtNy4yOWMwLTEwLjE4LTguMjQtMTguNDItMTguNDItMTguNDJIMTMzLjQyYy0xMC4xNywwLTE4LjQyLDguMjQtMTguNDIsMTguNDJ2Ny4yOWg2OS45OQ0KCQlsLTQyLjI1LDIxLjA1bC0xMS41NCw1Ljc2bDEuOTIsMy4xOWw0LjcyLDcuODdsMi45OCw0Ljk4aDQ4LjQzbC0yNS43NCwxMi44M2wtMTEuNTQsNS43Nmw0LjI3LDcuMTNsMi4zNiwzLjkybDUuMzUsOC45MmgyOS41Nw0KCQlsLTExLjIzLDUuNmwtMTEuNTQsNS43NWw2LjA1LDEwLjA4bDAuNTgsMC45OGw3LjEzLDExLjg4aDUxLjg4bC0xMC4yOCwxNy4xNGgtMzEuMzJsNy42MiwxMi43Mmw4LjAzLDEzLjM5bDcuMzksMTIuMzJoMC4wNg0KCQlsNy40OC0xMi40NGw3Ljk3LTEzLjI3bDcuNjMtMTIuNzJoMC4wMWwzLjk2LTYuNmw2LjMyLTEwLjUzbDcuNzItMTIuODZsMTIuODYtMjEuNDNsNy43MS0xMi44NUgxNzEuMjVsLTEuMS0xLjgybDQ3LjkyLTIzLjg5DQoJCWg3Ni45Mmw3LjcxLTEyLjg2SDE1My42NWw2MC4xNy0yOS45OUgzMjAuODF6IE0yNTYuOTcsMjIyLjQybC0xMi44NiwyMS40M2gtNTIuM2wtMi44Ny00Ljc4bDMzLjQxLTE2LjY1SDI1Ni45N3oiLz4NCgk8cGF0aCBjbGFzcz0ic3QxMCIgZD0iTTE4Ny4zMSwyODYuNTVsMTUuNDIsMjUuNzFoLTY5LjMxYy0xMC4xNywwLTE4LjQyLTguMjUtMTguNDItMTguNDJ2LTcuMjlIMTg3LjMxeiIvPg0KCTxwYXRoIGNsYXNzPSJzdDEwIiBkPSJNMzIwLjgxLDI4Ni41NXY3LjI5YzAsMTAuMTctOC4yNCwxOC40Mi0xOC40MiwxOC40MmgtNjkuNDVsMTUuNDItMjUuNzFIMzIwLjgxeiIvPg0KPC9nPg0KPC9zdmc+DQo=" alt="SW" style="height:32px;width:32px;object-fit:contain;filter:brightness(0) invert(1)">
+      <span class="mobile-title">JOB SCHEDULER</span>
+      <div style="width:32px"></div>
+    </div>
     <!-- Mobile: large centred nav row -->
     <div class="mobile-nav-row" style="display:none">
       <button class="nav-btn" onclick="shiftWeeks(-1)" style="touch-action:manipulation">&#8249;</button>
