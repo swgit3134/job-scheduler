@@ -234,18 +234,24 @@ body { font-family: 'Saira', 'Segoe UI', Arial, sans-serif; background: #f0f4f8;
         </select>
       </div>
 
-      <div class="fg fcol2" style="display:flex;gap:48px;align-items:flex-start;padding:4px 0">
-        <div class="toggle-group">
-          <span style="font-size:12px;font-weight:600;color:#333;text-transform:uppercase;letter-spacing:0.03em">Client has approved site access</span>
-          <label class="toggle-sw"><input type="checkbox" id="f-ca"><span class="toggle-track"></span></label>
+      <div class="fg fcol2" style="display:flex;gap:48px;align-items:flex-start;padding:8px 0 4px">
+        <div style="display:flex;flex-direction:column;gap:10px;align-items:flex-start">
+          <span style="font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:0.05em">Client has approved site access</span>
+          <div class="sw-wrap" id="sw-ca" onclick="toggleSw('f-ca','sw-ca')" style="width:52px;height:28px;border-radius:14px;background:#b0b8c1;position:relative;cursor:pointer;transition:background 0.3s;box-shadow:inset 0 1px 3px rgba(0,0,0,0.2)">
+            <div class="sw-knob" style="width:24px;height:24px;background:white;border-radius:50%;position:absolute;top:2px;left:2px;transition:transform 0.3s;box-shadow:0 2px 6px rgba(0,0,0,0.3)"></div>
+            <input type="checkbox" id="f-ca" style="display:none">
+          </div>
         </div>
-        <div class="toggle-group">
-          <span style="font-size:12px;font-weight:600;color:#333;text-transform:uppercase;letter-spacing:0.03em">Subcontractor Booked</span>
-          <label class="toggle-sw"><input type="checkbox" id="f-bk"><span class="toggle-track"></span></label>
+        <div style="display:flex;flex-direction:column;gap:10px;align-items:flex-start">
+          <span style="font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:0.05em">Subcontractor Booked</span>
+          <div class="sw-wrap" id="sw-bk" onclick="toggleSw('f-bk','sw-bk')" style="width:52px;height:28px;border-radius:14px;background:#b0b8c1;position:relative;cursor:pointer;transition:background 0.3s;box-shadow:inset 0 1px 3px rgba(0,0,0,0.2)">
+            <div class="sw-knob" style="width:24px;height:24px;background:white;border-radius:50%;position:absolute;top:2px;left:2px;transition:transform 0.3s;box-shadow:0 2px 6px rgba(0,0,0,0.3)"></div>
+            <input type="checkbox" id="f-bk" style="display:none">
+          </div>
         </div>
       </div>
 
-      <div class="fg fcol2"><label>Notes</label><textarea id="f-notes" placeholder="" style="min-height:80px"></textarea></div>
+      <div class="fg fcol2" style="margin-top:8px"><label>Notes</label><textarea id="f-notes" placeholder="" style="min-height:80px"></textarea></div>
 
     </div>
     <div class="mfoot">
@@ -729,6 +735,35 @@ function openEdit(id) {
   document.getElementById('modal-bg').style.display='flex';
 }
 
+function toggleSw(inputId, wrapId) {
+  const cb = document.getElementById(inputId);
+  const wrap = document.getElementById(wrapId);
+  if (!cb || !wrap) return;
+  cb.checked = !cb.checked;
+  applySw(wrap, cb.checked);
+}
+
+function applySw(wrap, checked) {
+  const knob = wrap.querySelector('.sw-knob');
+  if (checked) {
+    wrap.style.background = '#0039a5';
+    knob.style.transform = 'translateX(24px)';
+  } else {
+    wrap.style.background = '#b0b8c1';
+    knob.style.transform = 'translateX(0)';
+  }
+}
+
+function syncSwitches() {
+  // Sync visual state of switches to checkbox values
+  const ca = document.getElementById('f-ca');
+  const bk = document.getElementById('f-bk');
+  const swCa = document.getElementById('sw-ca');
+  const swBk = document.getElementById('sw-bk');
+  if (ca && swCa) applySw(swCa, ca.checked);
+  if (bk && swBk) applySw(swBk, bk.checked);
+}
+
 function clearForm() {
   ['f-jobnumber','f-suburb','f-notes','f-startdate','f-enddate'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
   document.getElementById('f-machine').value='';
@@ -737,6 +772,7 @@ function clearForm() {
   ['f-ca','f-bk'].forEach(id=>document.getElementById(id).checked=false);
   selectedCrew=[];
   updateCrewDisplay();
+  syncSwitches();
 }
 
 function closeModal() { document.getElementById('modal-bg').style.display='none'; }
