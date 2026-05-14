@@ -105,31 +105,60 @@ body { font-family: 'Saira', 'Segoe UI', Arial, sans-serif; background: #f0f4f8;
 .toggle-row { display:flex; align-items:center; gap:10px; }
 /* ── MOBILE ─────────────────────────────────────── */
 @media (max-width: 768px) {
-  .topbar { height:52px; padding:0 10px; gap:6px; }
-  .topbar-title { font-size:13px; }
-  .month-label { font-size:13px; min-width:100px; }
-  .nav-btn { width:28px; height:28px; font-size:18px; }
-  .btn-new { padding:6px 12px; font-size:12px; }
-  .btn-refresh { width:26px; height:26px; font-size:15px; }
-  .user-chip { font-size:10px; padding:3px 7px; display:none; }
-  .last-refresh-txt { display:none; }
-  .topbar-sep { display:none; }
+  /* Topbar: logo small, nav arrows centred and large */
+  .topbar {
+    height: auto;
+    flex-wrap: wrap;
+    padding: 6px 8px;
+    gap: 4px;
+  }
+  .topbar-brand img { height: 28px !important; max-width: 140px !important; }
+  .topbar-title { font-size: 11px !important; letter-spacing: 0.02em; }
+  .topbar-sep { display: none; }
+  .user-chip { display: none; }
+  .last-refresh-txt { display: none; }
+  .topbar-spacer { display: none; }
 
-  .cal-corner { width:70px; min-width:70px; font-size:9px; padding:3px 4px; }
-  .cal-date-cell { font-size:10px; }
-  .cal-date-cell .d-num { font-size:13px; }
-  .cal-date-cell .d-day { font-size:9px; }
-  .cal-date-cell .d-mon { font-size:8px; }
-  .row-label { width:70px; min-width:70px; font-size:9px; padding:3px 4px; letter-spacing:0; }
+  /* Nav row: full width, centred */
+  .mobile-nav-row {
+    display: flex !important;
+    width: 100%;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    padding: 4px 0 2px;
+    order: 10;
+  }
+  .nav-btn {
+    width: 48px !important;
+    height: 48px !important;
+    font-size: 32px !important;
+    border-radius: 8px !important;
+    background: rgba(255,255,255,0.15) !important;
+  }
+  .nav-btn:active { background: rgba(255,255,255,0.3) !important; }
+  .month-label { font-size: 14px; min-width: 130px; text-align: center; }
 
-  .jcard { padding:2px 4px; margin-bottom:1px; }
-  .jcard .jn { font-size:9px; line-height:1.2; }
-  .jcard .jc { font-size:8px; }
+  /* Action buttons: smaller */
+  .btn-new { padding: 5px 10px; font-size: 11px; }
+  .btn-refresh { width: 28px; height: 28px; font-size: 16px; }
 
-  .modal-box { padding:16px; max-height:95vh; }
-  .modal-head h2 { font-size:15px; }
-  .fgrid { grid-template-columns:1fr; }
-  .fcol2 { grid-column:1; }
+  /* Calendar cells */
+  .cal-corner { width: 64px; min-width: 64px; font-size: 8px; padding: 3px 3px; }
+  .cal-date-cell .d-num { font-size: 13px; }
+  .cal-date-cell .d-day { font-size: 9px; }
+  .cal-date-cell .d-mon { font-size: 8px; }
+  .row-label { width: 64px; min-width: 64px; font-size: 8px; padding: 3px 3px; letter-spacing: 0; }
+
+  .jcard { padding: 2px 3px; margin-bottom: 1px; }
+  .jcard .jn { font-size: 8.5px; line-height: 1.2; }
+  .jcard .jc { font-size: 7.5px; }
+
+  /* Modal */
+  .modal-box { padding: 14px; max-height: 95vh; }
+  .modal-head h2 { font-size: 15px; }
+  .fgrid { grid-template-columns: 1fr; }
+  .fcol2 { grid-column: 1; }
 }
 /* Crew multi-select */
 .crew-select { position:relative; }
@@ -188,6 +217,12 @@ body { font-family: 'Saira', 'Segoe UI', Arial, sans-serif; background: #f0f4f8;
     <button class="btn-new" onclick="openAddModal(null,null)">New</button>
     <button class="btn-refresh" onclick="loadJobs()" title="Refresh">&#8635;</button>
     <span class="user-chip" id="user-name" onclick="signOut()" title="Sign out"></span>
+    <!-- Mobile: large centred nav row -->
+    <div class="mobile-nav-row" style="display:none">
+      <button class="nav-btn" onclick="shiftWeeks(-1)" style="touch-action:manipulation">&#8249;</button>
+      <div class="month-label" id="month-label-mobile" style="font-size:14px;min-width:130px;text-align:center"></div>
+      <button class="nav-btn" onclick="shiftWeeks(1)" style="touch-action:manipulation">&#8250;</button>
+    </div>
   </div>
 
   <div class="cal-wrap">
@@ -604,6 +639,8 @@ function renderCal() {
     ? LONG_MONTHS[f.getMonth()]+' '+f.getFullYear()
     : MONTHS[f.getMonth()]+' – '+MONTHS[l.getMonth()]+' '+l.getFullYear();
   document.getElementById('month-label').textContent=ml;
+  const mml=document.getElementById('month-label-mobile');
+  if(mml) mml.textContent=ml;
 
   // Columns fill screen width — 1 week on mobile, 4 on desktop
   const wrapEl = document.getElementById('cal-grid').parentElement;
