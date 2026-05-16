@@ -242,6 +242,7 @@ button { font:inherit; color:inherit; cursor:pointer; }
 .day-cell.today { background:linear-gradient(180deg,oklch(0.985 0.012 255) 0%,transparent 60%); }
 .day-cell.today:hover { background:oklch(0.975 0.018 255); }
 .day-cell.drop-hover { background:oklch(0.96 0.04 255) !important; box-shadow:inset 0 0 0 2px var(--accent); }
+.day-cell.drop-hover-machine { background:oklch(0.96 0.05 152) !important; box-shadow:inset 0 0 0 2px var(--status-confirmed); }
 
 /* ---------- Job card ---------- */
 .job {
@@ -813,7 +814,7 @@ let msalInst=null, allJobs=[], editId=null, siteId=null, filterOn=false;
 let currentView='month', viewOffset=0;
 let fieldMap={};
 let copySourceJobId=null;
-let draggingJobId=null, draggingFromDate=null;
+let draggingJobId=null, draggingFromDate=null, draggingFromMachine=null;
 let selectedCrew=[];
 let selectedColorName='';
 
@@ -1141,7 +1142,9 @@ function renderCal() {
     const card=e.target.closest('.job');
     if(!card||e.target.closest('.job-copy')||card.classList.contains('past')) { e.preventDefault(); return; }
     draggingJobId=card.dataset.jobid;
-    draggingFromDate=card.closest('.day-cell')?.dataset.date;
+    const srcCell=card.closest('.day-cell');
+    draggingFromDate=srcCell?.dataset.date;
+    draggingFromMachine=srcCell?.dataset.machine||null;
     e.dataTransfer.effectAllowed='move';
     setTimeout(()=>card.classList.add('dragging'),0);
   };
@@ -1149,14 +1152,16 @@ function renderCal() {
     if(!draggingJobId) return;
     const cell=e.target.closest('.day-cell'); if(!cell) return;
     e.preventDefault(); e.dataTransfer.dropEffect='move';
-    if(!cell.classList.contains('drop-hover')) {
-      document.querySelectorAll('.day-cell.drop-hover').forEach(el=>el.classList.remove('drop-hover'));
-      cell.classList.add('drop-hover');
+    const isMachineTarget=cell.dataset.machine&&cell.dataset.machine!==draggingFromMachine;
+    const hoverClass=isMachineTarget?'drop-hover-machine':'drop-hover';
+    if(!cell.classList.contains(hoverClass)) {
+      document.querySelectorAll('.day-cell.drop-hover,.day-cell.drop-hover-machine').forEach(el=>{el.classList.remove('drop-hover');el.classList.remove('drop-hover-machine');});
+      cell.classList.add(hoverClass);
     }
   };
   grid.ondragleave=function(e) {
     const cell=e.target.closest('.day-cell');
-    if(cell&&!cell.contains(e.relatedTarget)) cell.classList.remove('drop-hover');
+    if(cell&&!cell.contains(e.relatedTarget)){cell.classList.remove('drop-hover');cell.classList.remove('drop-hover-machine');}
   };
   grid.ondragend=function() { cleanupDrag(); };
   grid.ondrop=async function(e) {
@@ -1165,29 +1170,66 @@ function renderCal() {
     document.querySelectorAll('.day-cell.drop-hover').forEach(el=>el.classList.remove('drop-hover'));
     if(!cell||!draggingJobId||!draggingFromDate) { cleanupDrag(); return; }
     const toDate=cell.dataset.date;
-    if(!toDate||toDate===draggingFromDate) { cleanupDrag(); return; }
+    const toMachine=cell.dataset.machine||'';
+    const machineChanging=toMachine&&toMachine!==draggingFromMachine;
+    // No-op if nothing changed
+    if(!toDate||(toDate===draggingFromDate&&!machineChanging)) { cleanupDrag(); return; }
     const j=allJobs.find(x=>x.id===draggingJobId); if(!j) { cleanupDrag(); return; }
+
     const delta=Math.round((new Date(toDate)-new Date(draggingFromDate))/86400000);
-    const origStart=parseSpDate(j.Start_x0020_Date);
-    const origEnd=j.End_x0020_Date?parseSpDate(j.End_x0020_Date):new Date(origStart);
-    const newStart=new Date(origStart); newStart.setDate(newStart.getDate()+delta);
-    const newEnd=new Date(origEnd); newEnd.setDate(newEnd.getDate()+delta);
-    cleanupDrag(); spin(true);
+
+    // Find same-job siblings with start date >= dragged date (subsequent tiles to shift)
+    const jobNum=j.JobNumber||'';
+    const siblings=jobNum
+      ? allJobs.filter(x=>{
+          if(x.id===j.id) return false;
+          if(!x.JobNumber||x.JobNumber!==jobNum) return false;
+          // Compare as YYYY-MM-DD strings to avoid timezone issues
+          const xDateStr=spDateToMelbString(x.Start_x0020_Date);
+          return xDateStr&&xDateStr>=draggingFromDate;
+        })
+      : [];
+
+    cleanupDrag();
+    spin(true);
     try {
       const sid=await getSite();
-      await gfetch('PATCH',`/sites/${sid}/lists/${LIST_NAME}/items/${j.id}/fields`,{
+
+      // --- Move the dragged tile (date shift + optional machine change) ---
+      const origStart=parseSpDate(j.Start_x0020_Date);
+      const origEnd=j.End_x0020_Date?parseSpDate(j.End_x0020_Date):new Date(origStart);
+      const newStart=new Date(origStart); newStart.setDate(newStart.getDate()+delta);
+      const newEnd=new Date(origEnd); newEnd.setDate(newEnd.getDate()+delta);
+      const fields={
         'Start_x0020_Date':fdate(newStart)+'T12:00:00.000Z',
         'End_x0020_Date':fdate(newEnd)+'T12:00:00.000Z'
-      });
-      toast('Job moved ✓'); loadJobs();
+      };
+      if(machineChanging) fields['Machine']=toMachine;
+      await gfetch('PATCH',`/sites/${sid}/lists/${LIST_NAME}/items/${j.id}/fields`,fields);
+
+      // --- Shift subsequent same-job tiles (date only, machine unchanged) ---
+      for(const sib of siblings) {
+        const sStart=parseSpDate(sib.Start_x0020_Date);
+        const sEnd=sib.End_x0020_Date?parseSpDate(sib.End_x0020_Date):new Date(sStart);
+        const ns=new Date(sStart); ns.setDate(ns.getDate()+delta);
+        const ne=new Date(sEnd); ne.setDate(ne.getDate()+delta);
+        await gfetch('PATCH',`/sites/${sid}/lists/${LIST_NAME}/items/${sib.id}/fields`,{
+          'Start_x0020_Date':fdate(ns)+'T12:00:00.000Z',
+          'End_x0020_Date':fdate(ne)+'T12:00:00.000Z'
+        });
+      }
+
+      const total=1+siblings.length;
+      toast(total>1?`Moved ${total} tiles ✓`:'Job moved ✓');
+      loadJobs();
     } catch(err) { toast('Error: '+err.message,'error'); spin(false); }
   };
 }
 
 function cleanupDrag() {
-  draggingJobId=null; draggingFromDate=null;
+  draggingJobId=null; draggingFromDate=null; draggingFromMachine=null;
   document.querySelectorAll('.job.dragging').forEach(c=>c.classList.remove('dragging'));
-  document.querySelectorAll('.day-cell.drop-hover').forEach(c=>c.classList.remove('drop-hover'));
+  document.querySelectorAll('.day-cell.drop-hover,.day-cell.drop-hover-machine').forEach(c=>{c.classList.remove('drop-hover');c.classList.remove('drop-hover-machine');});
 }
 
 // ── NAVIGATION ───────────────────────────────────────────────────
