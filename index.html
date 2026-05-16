@@ -392,13 +392,13 @@ const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const LONG_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const ROW_DEFS = [
-  { label: 'GEOPROBE', matches: ['GEOPROBE V4', 'Geoprobe V4', 'geoprobe v4', 'GEOPROBE V3', 'Geoprobe V3', 'geoprobe v3'] },
-  { label: 'HANJIN (TRACK)', matches: ['HANJIN (TRUCK)', 'Hanjin (Truck)', 'HANJIN (TRACK)', 'Hanjin (Track)', 'HANJIN', 'Hanjin'] },
-  { label: 'COM 305', matches: ['COM 305', 'Com 305'] },
-  { label: 'E/PROBE', matches: ['E/PROBE', 'E/Probe', 'e/probe'] },
-  { label: 'DINGO', matches: ['DINGO(RED)', 'Dingo(Red)', 'Dingo (Red)', 'DINGO(BLUE)', 'Dingo(Blue)', 'Dingo (Blue)', 'DINGO', 'Dingo'] },
-  { label: 'YARD / LEAVE', matches: ['YARD/LEAVE', 'Yard/Leave', 'Yard / Leave', 'yard / leave'] },
-  { label: 'TBC / SI', matches: ['TBC/SI', 'TBC/SI', 'TBC', 'tbc', 'Site Inspection', 'site inspection'] },
+  { label: 'GEOPROBE',     tiles: 2, matches: ['GEOPROBE V4', 'Geoprobe V4', 'geoprobe v4', 'GEOPROBE V3', 'Geoprobe V3', 'geoprobe v3'] },
+  { label: 'HANJIN (TRACK)', tiles: 1, matches: ['HANJIN (TRUCK)', 'Hanjin (Truck)', 'HANJIN (TRACK)', 'Hanjin (Track)', 'HANJIN', 'Hanjin'] },
+  { label: 'COM 305',      tiles: 1, matches: ['COM 305', 'Com 305'] },
+  { label: 'E/PROBE',      tiles: 4, matches: ['E/PROBE', 'E/Probe', 'e/probe'] },
+  { label: 'DINGO',        tiles: 3, matches: ['DINGO(RED)', 'Dingo(Red)', 'Dingo (Red)', 'DINGO(BLUE)', 'Dingo(Blue)', 'Dingo (Blue)', 'DINGO', 'Dingo'] },
+  { label: 'YARD / LEAVE', tiles: 1, matches: ['YARD/LEAVE', 'Yard/Leave', 'Yard / Leave', 'yard / leave'] },
+  { label: 'TBC / SI',     tiles: 3, matches: ['TBC/SI', 'TBC/SI', 'TBC', 'tbc', 'Site Inspection', 'site inspection'] },
 ];
 
 const msalCfg = {
@@ -685,20 +685,9 @@ function renderCal() {
   const availH = wrapEl.clientHeight || (window.innerHeight - topbarH);
   const headerH = isMobile ? 38 : 46;
   const totalBodyH = availH - headerH;
-  const jobsPerRow = machines.map(row => {
-    const matchSet = new Set(row.matches.map(m => m.toLowerCase()));
-    let maxInRow = 0;
-    dates.forEach(d => {
-      const count = allJobs.filter(j => matchSet.has((j.Machine||'').toLowerCase()) && jobOnDate(j,d)).length;
-      if(count > maxInRow) maxInRow = count;
-    });
-    return Math.max(1, maxInRow);
-  });
-  const minH = 32;
-  const totalMinH = machines.length * minH;
-  const extraH = Math.max(0, totalBodyH - totalMinH);
-  const totalWeight = jobsPerRow.reduce((a,b) => a+b, 0);
-  const rowHeights = jobsPerRow.map(w => Math.floor(minH + (w / totalWeight) * extraH));
+  const tileWeights = machines.map(row => row.tiles || 1);
+  const totalWeight = tileWeights.reduce((a,b) => a+b, 0);
+  const rowHeights = tileWeights.map(w => Math.floor(totalBodyH * w / totalWeight));
   const usedH = rowHeights.reduce((a,b)=>a+b,0);
   rowHeights[rowHeights.length-1] += (totalBodyH - usedH);
   grid.style.gridTemplateRows = `${headerH}px ${rowHeights.map(h=>h+'px').join(' ')}`;
@@ -742,7 +731,7 @@ function renderCal() {
         +`<div><div class="jn" style="pointer-events:none;color:${titleColor}">${xe(j.JobNumber||"")}${j.JobNumber&&j.Suburb?" - ":""}${xe(j.Suburb||j.Title||"")}</div>`
         +((j.CrewText||j.Crew)?`<div class="jc" style="pointer-events:none">${xe(j.CrewText||(Array.isArray(j.Crew)?j.Crew.join(', '):(j.Crew+'').replace(/;#/g,', ')))}</div>`:"")
         +`</div>`
-        +`<div class="jcard-menu" style="pointer-events:auto"><button onclick="event.stopPropagation(); openCopyModal('${j.id}')" title="Copy to new date">📋</button></div>`
+        +`<div class="jcard-menu" style="pointer-events:auto"><button onclick="event.stopPropagation(); openCopyModal('${j.id}','${ds}')" title="Copy to new date">📋</button></div>`
         +`</div>`
         +`</div>`;
       });
@@ -1086,9 +1075,15 @@ async function deleteJob() {
 }
 
 // ── COPY FUNCTIONALITY ──────────────────────────────────────────────────────────
-function openCopyModal(jobId) {
+function openCopyModal(jobId, fromDate) {
   copySourceJobId = jobId;
-  document.getElementById('copy-date-input').value = '';
+  let nextDate = '';
+  if (fromDate) {
+    const d = new Date(fromDate);
+    d.setDate(d.getDate() + 1);
+    nextDate = fdate(d);
+  }
+  document.getElementById('copy-date-input').value = nextDate;
   document.getElementById('copy-modal-bg').style.display = 'flex';
   setTimeout(() => document.getElementById('copy-date-input').focus(), 100);
 }
