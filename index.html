@@ -100,7 +100,21 @@ button { font:inherit; color:inherit; cursor:pointer; }
 .brand-logo { height:26px; width:auto; }
 .brand-sep { width:1px; height:22px; background:var(--line); }
 .brand-app { font-size:14px; font-weight:600; letter-spacing:-0.01em; white-space:nowrap; }
-.header-mid { display:flex; align-items:center; justify-content:center; gap:12px; }
+.header-mid { display:flex; align-items:center; justify-content:center; gap:10px; }
+.view-switcher {
+  display:inline-flex; background:var(--surface-2); border:1px solid var(--line);
+  border-radius:999px; padding:3px; gap:2px;
+}
+.view-switcher button {
+  border:0; background:transparent; padding:5px 14px; border-radius:999px;
+  font-size:13px; font-weight:500; color:var(--ink-2);
+  transition:background 120ms,color 120ms,box-shadow 120ms;
+}
+.view-switcher button:hover { color:var(--ink); }
+.view-switcher button.active {
+  background:var(--surface); color:var(--ink);
+  box-shadow:0 1px 2px rgba(0,0,0,0.06),0 0 0 1px var(--line);
+}
 .date-nav {
   display:inline-flex; align-items:center; gap:2px;
   background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:3px;
@@ -472,7 +486,8 @@ button { font:inherit; color:inherit; cursor:pointer; }
   .topbar { grid-template-columns:1fr auto; row-gap:7px; padding:8px 12px; gap:8px; }
   .brand { grid-row:1; grid-column:1; }
   .brand-logo { height:22px; }
-  .header-mid { grid-row:2; grid-column:1/-1; justify-content:space-between; }
+  .header-mid { grid-row:2; grid-column:1/-1; justify-content:space-between; flex-wrap:wrap; gap:8px; }
+  .view-switcher button { padding:4px 11px; font-size:12px; }
   .header-right { grid-row:1; grid-column:2; gap:6px; }
   .header-right .refresh-info { display:none; }
   .header-right .user-name { display:none; }
@@ -540,12 +555,17 @@ button { font:inherit; color:inherit; cursor:pointer; }
       <span class="brand-app">Job Scheduler</span>
     </div>
     <div class="header-mid">
+      <div class="view-switcher">
+        <button id="vbtn-day" onclick="setView('day')">Day</button>
+        <button id="vbtn-week" onclick="setView('week')">Week</button>
+        <button id="vbtn-month" onclick="setView('month')" class="active">Month</button>
+      </div>
       <div class="date-nav">
-        <button class="icon" onclick="shiftWeeks(-1)" title="Previous">
+        <button class="icon" onclick="shiftView(-1)" title="Previous">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
         </button>
         <span class="date-label" id="month-label">Loading…</span>
-        <button class="icon" onclick="shiftWeeks(1)" title="Next">
+        <button class="icon" onclick="shiftView(1)" title="Next">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
         </button>
       </div>
@@ -788,7 +808,8 @@ const msalCfg = {
   cache:{ cacheLocation:'localStorage', storeAuthStateInCookie:true }
 };
 const SCOPES = ['Sites.ReadWrite.All','User.Read'];
-let msalInst=null, allJobs=[], editId=null, siteId=null, weekOff=0, filterOn=false;
+let msalInst=null, allJobs=[], editId=null, siteId=null, filterOn=false;
+let currentView='month', viewOffset=0;
 let fieldMap={};
 let copySourceJobId=null;
 let draggingJobId=null, draggingFromDate=null;
@@ -906,7 +927,8 @@ async function onIn(acc) {
   const initials=name.split(' ').map(n=>n[0]||'').join('').slice(0,2).toUpperCase()||'?';
   const av=document.getElementById('user-avatar'); if(av) av.textContent=initials;
   try { await token(); } catch(e) { console.warn('Token pre-warm:',e.message); }
-  loadFieldMap().then(()=>loadJobs());
+  // Wait one frame so #app is visible and has correct dimensions before first render
+  requestAnimationFrame(()=>loadFieldMap().then(()=>loadJobs()));
 }
 
 // ── HELPERS ──────────────────────────────────────────────────────
@@ -956,13 +978,32 @@ function jobOnDate(j,d) {
 }
 
 // ── CALENDAR ─────────────────────────────────────────────────────
-function getWeekDates() {
+function getViewDates() {
   const today=new Date(); today.setHours(0,0,0,0);
   const dow=today.getDay();
-  const mon=new Date(today); mon.setDate(today.getDate()-(dow===0?6:dow-1)+weekOff*7);
-  const weeksToShow=isMobileView()?1:4;
+  const isMob=isMobileView();
+
+  if(currentView==='day') {
+    const d=new Date(today); d.setDate(today.getDate()+viewOffset);
+    d._weekIndex=0; return [d];
+  }
+
+  if(currentView==='week'||(currentView==='month'&&isMob)) {
+    const mon=new Date(today);
+    mon.setDate(today.getDate()-(dow===0?6:dow-1)+viewOffset*7);
+    const dates=[];
+    for(let d=0;d<5;d++) {
+      const day=new Date(mon); day.setDate(mon.getDate()+d);
+      day._weekIndex=0; dates.push(day);
+    }
+    return dates;
+  }
+
+  // month: 4 weeks
+  const mon=new Date(today);
+  mon.setDate(today.getDate()-(dow===0?6:dow-1)+viewOffset*4*7);
   const dates=[];
-  for(let w=0;w<weeksToShow;w++) {
+  for(let w=0;w<4;w++) {
     for(let d=0;d<5;d++) {
       const day=new Date(mon); day.setDate(mon.getDate()+w*7+d);
       day._weekIndex=w; dates.push(day);
@@ -970,6 +1011,7 @@ function getWeekDates() {
   }
   return dates;
 }
+function getWeekDates() { return getViewDates(); }
 function getMachines() {
   const allMatched=new Set(ROW_DEFS.flatMap(r=>r.matches.map(m=>m.toLowerCase())));
   const extra=[...new Set(allJobs.map(j=>j.Machine).filter(Boolean))].filter(m=>!allMatched.has(m.toLowerCase()));
@@ -977,28 +1019,40 @@ function getMachines() {
 }
 
 function renderCal() {
-  const dates=getWeekDates();
+  const dates=getViewDates();
   const machines=getMachines();
   const grid=document.getElementById('cal-grid');
 
   const f=dates[0],l=dates[dates.length-1];
-  const ml=f.getMonth()===l.getMonth()&&f.getFullYear()===l.getFullYear()
-    ?LONG_MONTHS[f.getMonth()]+' '+f.getFullYear()
-    :MONTHS[f.getMonth()]+' – '+MONTHS[l.getMonth()]+' '+l.getFullYear();
+  let ml;
+  if(currentView==='day') {
+    ml=DAYS[f.getDay()]+', '+f.getDate()+' '+LONG_MONTHS[f.getMonth()]+' '+f.getFullYear();
+  } else if(f.getMonth()===l.getMonth()&&f.getFullYear()===l.getFullYear()) {
+    ml=LONG_MONTHS[f.getMonth()]+' '+f.getFullYear();
+  } else {
+    ml=MONTHS[f.getMonth()]+' – '+MONTHS[l.getMonth()]+' '+l.getFullYear();
+  }
   document.getElementById('month-label').textContent=ml;
   const mls=document.getElementById('month-label-sub'); if(mls) mls.textContent=ml;
 
   const searchTerm=(document.getElementById('search-input')?.value||'').toLowerCase().trim();
 
   const wrap=document.getElementById('schedule-wrap');
-  const wrapWidth=wrap.clientWidth||window.innerWidth;
+  // Use getBoundingClientRect for reliable width after layout
+  const wrapRect=wrap.getBoundingClientRect();
+  const wrapWidth=wrapRect.width||wrap.clientWidth||window.innerWidth;
   const isMobile=wrapWidth<768;
   const labelW=isMobile?72:120;
-  const colW=Math.max(isMobile?46:90,Math.floor((wrapWidth-labelW-20)/dates.length));
+  // Account for schedule-wrap padding (32px) + schedule border (2px) + scrollbar (10px)
+  const availColW=wrapWidth-labelW-44;
+  const minCol=isMobile?46:currentView==='day'?Math.max(120,availColW):90;
+  const colW=Math.max(minCol,Math.floor(availColW/dates.length));
   const colTpl=`${labelW}px repeat(${dates.length},${colW}px)`;
 
   const headerH=58;
-  const availH=wrap.clientHeight||(window.innerHeight-130);
+  // Use getBoundingClientRect for reliable height
+  const wrapH=wrapRect.height||wrap.clientHeight;
+  const availH=wrapH||(window.innerHeight-140);
   const totalBodyH=Math.max(availH-headerH,200);
   const tileWeights=machines.map(r=>r.tiles||1);
   const totalWeight=tileWeights.reduce((a,b)=>a+b,0);
@@ -1131,8 +1185,15 @@ function cleanupDrag() {
 }
 
 // ── NAVIGATION ───────────────────────────────────────────────────
-function shiftWeeks(n) { weekOff+=n; renderCal(); }
-function goToday() { weekOff=0; renderCal(); }
+function shiftView(n) { viewOffset+=n; renderCal(); }
+function shiftWeeks(n) { shiftView(n); }
+function goToday() { viewOffset=0; renderCal(); }
+function setView(v) {
+  currentView=v; viewOffset=0;
+  document.querySelectorAll('.view-switcher button').forEach(b=>b.classList.remove('active'));
+  const btn=document.getElementById('vbtn-'+v); if(btn) btn.classList.add('active');
+  renderCal();
+}
 function toggleFilter() {
   filterOn=!filterOn;
   document.getElementById('filter-btn').classList.toggle('active',filterOn);
@@ -1424,7 +1485,11 @@ window.addEventListener('DOMContentLoaded',()=>{
   initColorPicker();
   const sw=document.getElementById('schedule-wrap');
   if(sw) sw.addEventListener('scroll',()=>sw.classList.toggle('scrolled',sw.scrollLeft>0));
-  window.addEventListener('resize',()=>{ if(allJobs.length>0) renderCal(); });
+  let _resizeTimer;
+  window.addEventListener('resize',()=>{
+    clearTimeout(_resizeTimer);
+    _resizeTimer=setTimeout(()=>{ if(allJobs.length>0) renderCal(); },120);
+  });
 });
 </script>
 </body>
