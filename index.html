@@ -266,9 +266,13 @@ button { font:inherit; color:inherit; cursor:pointer; }
 }
 .job:active { cursor:grabbing; }
 .job.dragging { opacity:0.35; }
+.job.past { cursor:default; opacity:0.60; filter:grayscale(20%); }
+.job.past:hover { transform:none; box-shadow:none; border-color:color-mix(in oklch,var(--c-bar,var(--line-strong)) 20%,transparent); }
+.job.past .job-copy { display:none !important; }
+.job.past::after { content:""; position:absolute; top:5px; right:7px; width:7px; height:7px; border-radius:999px; background:var(--line-strong); opacity:0.5; }
 .job .job-head { display:flex; align-items:baseline; gap:4px; margin-bottom:1px; }
-.job .job-no { font-family:var(--font-mono); font-size:10.5px; font-weight:600; color:var(--c-ink); opacity:0.82; letter-spacing:-0.01em; }
-.job .job-suburb { font-size:12px; font-weight:600; line-height:1.2; color:var(--c-ink); }
+.job .job-no { font-family:var(--font-mono); font-size:10px; font-weight:700; color:var(--c-ink); opacity:0.48; letter-spacing:0em; }
+.job .job-suburb { font-size:13.5px; font-weight:600; line-height:1.25; color:var(--c-ink); word-break:break-word; overflow-wrap:break-word; }
 .job.no-access .job-suburb, .job.no-access .job-no { color:oklch(0.50 0.20 25); }
 .job .job-people { font-size:10.5px; color:color-mix(in oklch,var(--c-ink) 72%,transparent); font-weight:500; margin-top:1px; display:flex; align-items:center; gap:3px; flex-wrap:wrap; }
 .job .person-dot { width:5px; height:5px; border-radius:999px; background:var(--c-bar); display:inline-block; margin-right:1px; flex-shrink:0; }
@@ -510,8 +514,8 @@ button { font:inherit; color:inherit; cursor:pointer; }
   .day-cell { padding:3px 3px; gap:3px; }
   .job { padding:4px 6px; padding-left:8px; border-radius:5px; }
   .job .job-head { margin-bottom:0; }
-  .job .job-no { font-size:9.5px; }
-  .job .job-suburb { font-size:10.5px; line-height:1.15; }
+  .job .job-no { font-size:9px; }
+  .job .job-suburb { font-size:11.5px; line-height:1.2; }
   .job .job-people { font-size:9.5px; }
   .job-copy { display:none; }
   .modal { max-width:calc(100vw - 16px); border-radius:12px; }
@@ -969,6 +973,11 @@ function spDateToMelbString(str) {
   const d=new Date(melbMs);
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
 }
+function isPastJob(j) {
+  const today=new Date(); today.setHours(0,0,0,0);
+  const end=j.End_x0020_Date?parseSpDate(j.End_x0020_Date):(j.Start_x0020_Date?parseSpDate(j.Start_x0020_Date):null);
+  return end ? end < today : false;
+}
 function jobOnDate(j,d) {
   if(!j.Start_x0020_Date) return false;
   const s=parseSpDate(j.Start_x0020_Date);
@@ -1105,10 +1114,12 @@ function renderCal() {
         const statusSlug=getStatusSlug(j.Status);
         const clientOk=j['Client_x0020_has_x0020_approved_'];
         const isMultiDay=j.End_x0020_Date&&j.Start_x0020_Date&&j.End_x0020_Date!==j.Start_x0020_Date;
-        const copyBtn=isMobile?'':`<button class="job-copy" onclick="event.stopPropagation();openCopyModal('${j.id}','${ds}')" title="Copy to new date">&#x1f4cb;</button>`;
+        const isPast=isPastJob(j);
+        const copyBtn=(!isMobile&&!isPast)?`<button class="job-copy" onclick="event.stopPropagation();openCopyModal('${j.id}','${ds}')" title="Copy to new date">&#x1f4cb;</button>`:'';
         const crew=j.CrewText||(Array.isArray(j.Crew)?j.Crew.join(', '):(j.Crew+'').replace(/;#/g,', ').trim())||'';
         const crewHtml=crew&&crew!=='undefined'?`<div class="job-people"><span class="person-dot"></span>${xe(crew)}</div>`:'';
-        h+=`<div class="job${clientOk?'':' no-access'}${isMultiDay?' multi-day':''}" data-jobid="${j.id}" data-color="${colorSlug}" data-status="${statusSlug}" ${isMobile?'':'draggable="true"'}>`;
+        const draggable=(!isMobile&&!isPast)?'draggable="true"':'';
+        h+=`<div class="job${clientOk?'':' no-access'}${isMultiDay?' multi-day':''}${isPast?' past':''}" data-jobid="${j.id}" data-color="${colorSlug}" data-status="${statusSlug}" ${draggable}>`;
         h+=`<div class="job-head"><span class="job-no">${xe(j.JobNumber||'')}</span></div>`;
         h+=`<div class="job-suburb">${xe(j.Suburb||j.Title||'')}</div>`;
         h+=crewHtml;
@@ -1126,14 +1137,14 @@ function renderCal() {
   grid.onclick=function(e) {
     if(isMobileView()) return;
     const card=e.target.closest('.job');
-    if(card) { e.stopPropagation(); const id=card.dataset.jobid; if(id) openEdit(id); return; }
+    if(card) { e.stopPropagation(); if(!card.classList.contains('past')) { const id=card.dataset.jobid; if(id) openEdit(id); } return; }
     const cell=e.target.closest('.day-cell');
     if(cell) openNew(cell.dataset.machine||'',cell.dataset.date||'');
   };
   grid.ondragstart=function(e) {
     if(isMobileView()) { e.preventDefault(); return; }
     const card=e.target.closest('.job');
-    if(!card||e.target.closest('.job-copy')) { e.preventDefault(); return; }
+    if(!card||e.target.closest('.job-copy')||card.classList.contains('past')) { e.preventDefault(); return; }
     draggingJobId=card.dataset.jobid;
     draggingFromDate=card.closest('.day-cell')?.dataset.date;
     e.dataTransfer.effectAllowed='move';
