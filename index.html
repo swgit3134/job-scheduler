@@ -59,11 +59,15 @@ body { font-family: 'Saira', 'Segoe UI', Arial, sans-serif; background: #f0f4f8;
 .cal-date-cell.week-start, .day-cell.week-start { border-left: 3px solid #0039a5 !important; }
 .cal-date-cell.week-start { background: #002d84; }
 
-.jcard { border-radius: 3px; padding: 3px 5px; margin-bottom: 2px; cursor: pointer; border-left: 3px solid rgba(0,0,0,0.25); border: 1px solid rgba(0,0,0,0.12); border-left: 3px solid rgba(0,0,0,0.25); }
+.jcard { border-radius: 3px; padding: 3px 5px; margin-bottom: 2px; cursor: pointer; border-left: 3px solid rgba(0,0,0,0.25); border: 1px solid rgba(0,0,0,0.12); border-left: 3px solid rgba(0,0,0,0.25); position: relative; }
 .jcard:hover { filter: brightness(0.9); }
+.jcard:hover .jcard-menu { display: flex; }
 .jcard .jn { font-size: 10px; font-weight: 700; line-height: 1.3; }
 .jcard .js { font-size: 9.5px; opacity: 0.8; }
 .jcard .jc { font-size: 9px; opacity: 0.65; font-style: italic; }
+.jcard-menu { display: none; position: absolute; top: 0; right: 0; gap: 2px; background: rgba(0,0,0,0.1); border-radius: 2px; padding: 2px; }
+.jcard-menu button { background: rgba(255,255,255,0.8); border: none; border-radius: 2px; width: 18px; height: 18px; cursor: pointer; font-size: 10px; padding: 0; display: flex; align-items: center; justify-content: center; }
+.jcard-menu button:hover { background: white; }
 
 .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 16px; }
 .modal-box { background: white; border-radius: 10px; width: 100%; max-width: 580px; max-height: 90vh; overflow-y: auto; padding: 22px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
@@ -81,7 +85,6 @@ body { font-family: 'Saira', 'Segoe UI', Arial, sans-serif; background: #f0f4f8;
 .cbrow { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
 .cbrow input[type=checkbox] { width: 15px; height: 15px; accent-color: #0039a5; flex-shrink: 0; }
 .cbrow label { font-size: 13px; font-weight: 400; text-transform: none; letter-spacing: 0; margin-bottom: 0; color: #333; cursor: pointer; }
-/* Toggle switch */
 .toggle-sw { display:inline-flex; align-items:center; cursor:pointer; }
 .toggle-sw input { display:none; }
 .toggle-track {
@@ -107,14 +110,6 @@ body { font-family: 'Saira', 'Segoe UI', Arial, sans-serif; background: #f0f4f8;
 .toggle-sw input:checked + .toggle-track::after { transform:translateX(24px); }
 .toggle-group { display:flex; flex-direction:column; gap:8px; align-items:flex-start; }
 .toggle-row { display:flex; align-items:center; gap:10px; }
-
-/* Daily breakdown table */
-.daily-breakdown { width:100%; border-collapse:collapse; margin:12px 0; font-size:12px; }
-.daily-breakdown th { background:#f0f4f8; padding:6px 8px; text-align:left; font-weight:600; color:#555; border-bottom:1px solid #ccc; }
-.daily-breakdown td { padding:6px 8px; border-bottom:1px solid #eee; }
-.daily-breakdown tr:hover { background:#f9fbfd; }
-.daily-breakdown input { width:100%; padding:4px 6px; border:1px solid #ddd; border-radius:3px; font-size:11px; }
-.daily-breakdown input:focus { outline:none; border-color:#0039a5; }
 
 /* ── MOBILE ─────────────────────────────────────── */
 @media (max-width: 768px) {
@@ -188,7 +183,6 @@ body { font-family: 'Saira', 'Segoe UI', Arial, sans-serif; background: #f0f4f8;
   .fgrid { grid-template-columns: 1fr; }
   .fcol2 { grid-column: 1; }
 }
-/* Crew multi-select */
 .crew-select { position:relative; }
 .crew-input { display:flex; align-items:center; padding:7px 10px; border:1px solid #ccc; border-radius:5px; font-size:13px; cursor:pointer; background:white; min-height:36px; }
 .crew-input:hover { border-color:#0039a5; }
@@ -212,6 +206,14 @@ body { font-family: 'Saira', 'Segoe UI', Arial, sans-serif; background: #f0f4f8;
 .spin-wrap { position: fixed; inset: 0; background: rgba(255,255,255,0.75); display: flex; align-items: center; justify-content: center; z-index: 50; flex-direction: column; gap: 10px; }
 .spinner { width: 34px; height: 34px; border: 3px solid #cdd8e8; border-top-color: #0039a5; border-radius: 50%; animation: sp 0.7s linear infinite; }
 @keyframes sp { to { transform: rotate(360deg); } }
+
+/* Copy modal */
+.copy-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 16px; }
+.copy-modal-box { background: white; border-radius: 10px; width: 100%; max-width: 400px; padding: 22px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
+.copy-modal-head { font-size: 16px; font-weight: 600; margin-bottom: 12px; }
+.copy-modal-input { width: 100%; padding: 8px 12px; border: 1px solid #ccc; border-radius: 5px; font-size: 13px; margin-bottom: 12px; }
+.copy-modal-input:focus { outline: none; border-color: #0039a5; }
+.copy-modal-foot { display: flex; gap: 8px; justify-content: flex-end; }
 
 @media (max-width: 600px) { .fgrid { grid-template-columns: 1fr; } }
 </style>
@@ -349,17 +351,11 @@ body { font-family: 'Saira', 'Segoe UI', Arial, sans-serif; background: #f0f4f8;
       <div class="fg fcol2" style="margin-top:8px"><label>Notes</label><textarea id="f-notes" placeholder="" style="min-height:80px"></textarea></div>
 
       <!-- Split by day option -->
-      <div class="fg fcol2" style="padding:8px 0">
+      <div class="fg fcol2" style="padding:8px 0" id="split-by-day-container">
         <div class="cbrow">
           <input type="checkbox" id="f-split-by-day" onchange="handleSplitToggle()">
           <label for="f-split-by-day" style="cursor:pointer;margin:0">Create separate entry for each day</label>
         </div>
-      </div>
-
-      <!-- Daily breakdown table (shown when split by day is enabled) -->
-      <div id="daily-breakdown-container" style="display:none;grid-column:1/-1">
-        <label style="font-size:11px;font-weight:600;color:#555;text-transform:uppercase;letter-spacing:0.03em;margin-bottom:8px;display:block">Crew for each day:</label>
-        <table class="daily-breakdown" id="daily-breakdown-table"></table>
       </div>
 
     </div>
@@ -369,6 +365,18 @@ body { font-family: 'Saira', 'Segoe UI', Arial, sans-serif; background: #f0f4f8;
         <button class="btn-cn" onclick="closeModal()">Cancel</button>
         <button class="btn-sv" id="save-btn" onclick="saveJob()">&#128190; Save</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- COPY MODAL -->
+<div id="copy-modal-bg" class="copy-modal" style="display:none" onclick="if(event.target.id==='copy-modal-bg') closeCopyModal()">
+  <div class="copy-modal-box">
+    <div class="copy-modal-head">Copy to new date</div>
+    <input type="date" id="copy-date-input" class="copy-modal-input" placeholder="Select new date">
+    <div class="copy-modal-foot">
+      <button class="btn-cn" onclick="closeCopyModal()">Cancel</button>
+      <button class="btn-sv" onclick="confirmCopy()">Copy</button>
     </div>
   </div>
 </div>
@@ -400,7 +408,7 @@ const msalCfg = {
 };
 const SCOPES = ['Sites.ReadWrite.All', 'User.Read'];
 let msalInst=null, allJobs=[], editId=null, siteId=null, weekOff=0, filterOn=false;
-let dailyCrewMap = {}; // Maps YYYY-MM-DD -> crew string
+let copySourceJobId = null;
 
 // ── AUTH ──────────────────────────────────────────────────────────
 async function initMsal() {
@@ -730,8 +738,12 @@ function renderCal() {
         const clientOk = j['Client_x0020_has_x0020_approved_'];
         const titleColor = clientOk ? tc : '#cc0000';
         h+=`<div class="jcard" data-jobid="${j.id}" style="background:${bg};color:${tc}">`
-        +`<div class="jn" style="pointer-events:none;color:${titleColor}">${xe(j.JobNumber||"")}${j.JobNumber&&j.Suburb?" - ":""}${xe(j.Suburb||j.Title||"")}</div>`
+        +`<div style="display:flex;justify-content:space-between;align-items:flex-start">`
+        +`<div><div class="jn" style="pointer-events:none;color:${titleColor}">${xe(j.JobNumber||"")}${j.JobNumber&&j.Suburb?" - ":""}${xe(j.Suburb||j.Title||"")}</div>`
         +((j.CrewText||j.Crew)?`<div class="jc" style="pointer-events:none">${xe(j.CrewText||(Array.isArray(j.Crew)?j.Crew.join(', '):(j.Crew+'').replace(/;#/g,', ')))}</div>`:"")
+        +`</div>`
+        +`<div class="jcard-menu" style="pointer-events:auto"><button onclick="event.stopPropagation(); openCopyModal('${j.id}')" title="Copy to new date">📋</button></div>`
+        +`</div>`
         +`</div>`;
       });
       h+=`</div>`;
@@ -766,72 +778,27 @@ function toggleFilter() {
 
 // ── MODAL ──────────────────────────────────────────────────────────
 function handleDateChange() {
-  const splitCheckbox = document.getElementById('f-split-by-day');
-  if (splitCheckbox && splitCheckbox.checked) {
-    renderDailyBreakdown();
+  const sd = document.getElementById('f-startdate').value;
+  const ed = document.getElementById('f-enddate').value;
+  const container = document.getElementById('split-by-day-container');
+  
+  // Hide if dates are the same
+  if (sd && ed && sd === ed) {
+    container.style.display = 'none';
+    document.getElementById('f-split-by-day').checked = false;
+  } else {
+    container.style.display = 'block';
   }
 }
 
 function handleSplitToggle() {
+  // Split by day checkbox - no crew table needed, just check if enabled
   const splitCheckbox = document.getElementById('f-split-by-day');
-  const container = document.getElementById('daily-breakdown-container');
-  if (splitCheckbox.checked) {
-    renderDailyBreakdown();
-    container.style.display = 'block';
-  } else {
-    container.style.display = 'none';
-    dailyCrewMap = {};
-  }
-}
-
-function renderDailyBreakdown() {
-  const sd = document.getElementById('f-startdate').value;
-  const ed = document.getElementById('f-enddate').value;
-  
-  if (!sd || !ed) {
-    document.getElementById('daily-breakdown-container').style.display = 'none';
-    return;
-  }
-
-  const start = new Date(sd);
-  const end = new Date(ed);
-  const dates = [];
-  
-  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-    dates.push(new Date(d));
-  }
-
-  const table = document.getElementById('daily-breakdown-table');
-  let html = '<thead><tr><th>Date</th><th>Day</th><th>Crew</th></tr></thead><tbody>';
-  
-  dates.forEach(d => {
-    const dateStr = fdate(d);
-    const dayName = DAYS[d.getDay()];
-    const savedCrew = dailyCrewMap[dateStr] || '';
-    html += `<tr>
-      <td>${dateStr}</td>
-      <td>${dayName}</td>
-      <td><input type="text" id="crew-${dateStr}" value="${xe(savedCrew)}" placeholder="Enter crew"></td>
-    </tr>`;
-  });
-  
-  html += '</tbody>';
-  table.innerHTML = html;
-
-  dates.forEach(d => {
-    const dateStr = fdate(d);
-    const input = document.getElementById(`crew-${dateStr}`);
-    if (input) {
-      input.addEventListener('change', (e) => {
-        dailyCrewMap[dateStr] = e.target.value;
-      });
-    }
-  });
+  // Just for UI purposes if needed later
 }
 
 function openNew(machine,dateStr) {
   editId=null;
-  dailyCrewMap = {};
   document.getElementById('m-title').textContent='New Job Schedule';
   document.getElementById('save-btn').innerHTML='&#128190; Save';
   document.getElementById('del-btn').style.display='none';
@@ -841,6 +808,7 @@ function openNew(machine,dateStr) {
     document.getElementById('f-startdate').value=dateStr;
     document.getElementById('f-enddate').value=dateStr;
   }
+  handleDateChange();
   document.getElementById('modal-bg').style.display='flex';
 }
 function openAddModal(m,d) { openNew(m||'',d||''); }
@@ -848,7 +816,6 @@ function openAddModal(m,d) { openNew(m||'',d||''); }
 function openEdit(id) {
   const j=allJobs.find(x=>x.id===id); if(!j) return;
   editId=id;
-  dailyCrewMap = {};
   document.getElementById('m-title').textContent='Edit Job Schedule';
   document.getElementById('save-btn').innerHTML='&#128190; Save';
   document.getElementById('del-btn').style.display='block';
@@ -878,8 +845,8 @@ function openEdit(id) {
   }
   updateCrewDisplay();
   document.getElementById('f-split-by-day').checked = false;
-  document.getElementById('daily-breakdown-container').style.display = 'none';
   document.getElementById('modal-bg').style.display='flex';
+  handleDateChange();
 }
 
 function toggleSw(inputId, wrapId) {
@@ -920,7 +887,6 @@ function clearForm() {
   selectedCrew=[];
   updateCrewDisplay();
   syncSwitches();
-  document.getElementById('daily-breakdown-container').style.display = 'none';
 }
 
 function closeModal() { document.getElementById('modal-bg').style.display='none'; }
@@ -1010,17 +976,16 @@ async function createMultipleDailyJobs() {
   const bk = document.getElementById('f-bk').checked;
 
   const sid = await getSite();
+  let count = 0;
   
   for (let d = new Date(sd); d <= ed; d.setDate(d.getDate() + 1)) {
     const dateStr = fdate(d);
-    const crewForDay = dailyCrewMap[dateStr] || '';
-
     const fields = {};
     if(jobNum)   fields['JobNumber'] = jobNum;
     fields['Status']  = status;
     fields['Machine'] = machine;
     if(suburb)   fields['Suburb'] = suburb;
-    if(crewForDay) fields['CrewText'] = crewForDay;
+    if(selectedCrew.length > 0) fields['CrewText'] = selectedCrew.join(', ');
     if(colorName && colorName !== '') {
       fields['Color'] = colorName;
       fields['ColorCode'] = colorHex;
@@ -1035,9 +1000,10 @@ async function createMultipleDailyJobs() {
 
     console.log(`Creating job for ${dateStr}:`, JSON.stringify(fields));
     await gfetch('POST',`/sites/${sid}/lists/${LIST_NAME}/items`,{fields});
+    count++;
   }
   
-  toast(`Created ${Math.floor((ed-sd)/(1000*60*60*24))+1} jobs ✓`,'success');
+  toast(`Created ${count} jobs ✓`,'success');
 }
 
 async function deleteJob() {
@@ -1049,6 +1015,67 @@ async function deleteJob() {
     await gfetch('DELETE',`/sites/${sid}/lists/${LIST_NAME}/items/${editId}`);
     toast('Deleted','success'); closeModal(); loadJobs();
   } catch(e) { toast('Error: '+e.message,'error'); }
+}
+
+// ── COPY FUNCTIONALITY ──────────────────────────────────────────────────────────
+function openCopyModal(jobId) {
+  copySourceJobId = jobId;
+  document.getElementById('copy-date-input').value = '';
+  document.getElementById('copy-modal-bg').style.display = 'flex';
+  setTimeout(() => document.getElementById('copy-date-input').focus(), 100);
+}
+
+function closeCopyModal() {
+  document.getElementById('copy-modal-bg').style.display = 'none';
+  copySourceJobId = null;
+}
+
+async function confirmCopy() {
+  const newDate = document.getElementById('copy-date-input').value;
+  if (!newDate) {
+    toast('Please select a date','error');
+    return;
+  }
+  
+  if (!copySourceJobId) return;
+  
+  const sourceJob = allJobs.find(j => j.id === copySourceJobId);
+  if (!sourceJob) {
+    toast('Source job not found','error');
+    return;
+  }
+
+  spin(true);
+  try {
+    const sid = await getSite();
+    
+    // Create new job with same data but different date
+    const fields = {};
+    if(sourceJob.JobNumber) fields['JobNumber'] = sourceJob.JobNumber;
+    if(sourceJob.Status) fields['Status'] = sourceJob.Status;
+    if(sourceJob.Machine) fields['Machine'] = sourceJob.Machine;
+    if(sourceJob.Suburb) fields['Suburb'] = sourceJob.Suburb;
+    if(sourceJob.CrewText) fields['CrewText'] = sourceJob.CrewText;
+    if(sourceJob.Color) fields['Color'] = sourceJob.Color;
+    if(sourceJob.ColorCode) fields['ColorCode'] = sourceJob.ColorCode;
+    if(sourceJob.Notes) fields['Notes'] = sourceJob.Notes;
+    
+    fields['Start_x0020_Date'] = newDate + 'T12:00:00.000Z';
+    fields['End_x0020_Date'] = newDate + 'T12:00:00.000Z';
+    
+    if(sourceJob['Client_x0020_has_x0020_approved_']) fields['Client_x0020_has_x0020_approved_'] = sourceJob['Client_x0020_has_x0020_approved_'];
+    if(sourceJob['Booking_x0020_the_x0020_subcontr']) fields['Booking_x0020_the_x0020_subcontr'] = sourceJob['Booking_x0020_the_x0020_subcontr'];
+    
+    console.log('Copying job to', newDate, ':', JSON.stringify(fields));
+    await gfetch('POST', `/sites/${sid}/lists/${LIST_NAME}/items`, {fields});
+    
+    toast('Job copied ✓','success');
+    closeCopyModal();
+    loadJobs();
+  } catch(e) {
+    toast('Error: '+e.message,'error');
+  }
+  spin(false);
 }
 
 // ── UTILS ──────────────────────────────────────────────────────────
