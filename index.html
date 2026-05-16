@@ -726,12 +726,13 @@ function renderCal() {
         const tc=isLight(bg)?'#111':'#fff';
         const clientOk = j['Client_x0020_has_x0020_approved_'];
         const titleColor = clientOk ? tc : '#cc0000';
-        h+=`<div class="jcard" data-jobid="${j.id}" draggable="true" style="background:${bg};color:${tc}">`
+        const copyBtn = isMobile ? '' : `<div class="jcard-menu" style="pointer-events:auto"><button onclick="event.stopPropagation(); openCopyModal('${j.id}','${ds}')" title="Copy to new date">📋</button></div>`;
+        h+=`<div class="jcard" data-jobid="${j.id}" ${isMobile?'':'draggable="true"'} style="background:${bg};color:${tc}">`
         +`<div style="display:flex;justify-content:space-between;align-items:flex-start">`
         +`<div><div class="jn" style="pointer-events:none;color:${titleColor}">${xe(j.JobNumber||"")}${j.JobNumber&&j.Suburb?" - ":""}${xe(j.Suburb||j.Title||"")}</div>`
         +((j.CrewText||j.Crew)?`<div class="jc" style="pointer-events:none">${xe(j.CrewText||(Array.isArray(j.Crew)?j.Crew.join(', '):(j.Crew+'').replace(/;#/g,', ')))}</div>`:"")
         +`</div>`
-        +`<div class="jcard-menu" style="pointer-events:auto"><button onclick="event.stopPropagation(); openCopyModal('${j.id}','${ds}')" title="Copy to new date">📋</button></div>`
+        +copyBtn
         +`</div>`
         +`</div>`;
       });
@@ -742,6 +743,7 @@ function renderCal() {
   grid.innerHTML=h;
 
   grid.onclick = function(e) {
+    if (isMobileView()) return;
     const card = e.target.closest('.jcard');
     if (card) {
       e.stopPropagation();
@@ -758,6 +760,7 @@ function renderCal() {
   };
 
   grid.ondragstart = function(e) {
+    if (isMobileView()) { e.preventDefault(); return; }
     const card = e.target.closest('.jcard');
     if (!card || e.target.closest('.jcard-menu')) { e.preventDefault(); return; }
     draggingJobId = card.dataset.jobid;
