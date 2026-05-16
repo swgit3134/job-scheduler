@@ -36,8 +36,6 @@ body { font-family: 'Saira', 'Segoe UI', Arial, sans-serif; background: #f0f4f8;
 .topbar-spacer { flex: 1; }
 .last-refresh-txt { font-size: 11px; color: rgba(255,255,255,0.6); }
 
-.btn-new { background: white; color: #0039a5; border: none; padding: 8px 20px; border-radius: 6px; font-size: 14px; font-weight: 700; cursor: pointer; }
-.btn-new:hover { background: #eaf0f8; }
 .btn-refresh { background: none; border: none; color: white; cursor: pointer; font-size: 18px; width: 30px; height: 30px; border-radius: 4px; display: flex; align-items: center; justify-content: center; }
 .btn-refresh:hover { background: rgba(255,255,255,0.15); }
 .user-chip { font-size: 12px; background: rgba(255,255,255,0.15); padding: 5px 12px; border-radius: 10px; cursor: pointer; white-space: nowrap; }
@@ -56,11 +54,14 @@ body { font-family: 'Saira', 'Segoe UI', Arial, sans-serif; background: #f0f4f8;
 .day-cell { border-right: 1px dashed #b3c8e8; border-bottom: 1px solid #b3c8e8; background: white; padding: 3px 4px; cursor: pointer; vertical-align: top; overflow-y: auto; }
 .day-cell:hover { background: #f0f7ff; }
 .day-cell.is-today { background: #fffde7; }
+.day-cell.drag-over { background: #dbeeff !important; outline: 2px dashed #0039a5; outline-offset: -2px; }
 .cal-date-cell.week-start, .day-cell.week-start { border-left: 3px solid #0039a5 !important; }
 .cal-date-cell.week-start { background: #002d84; }
 
-.jcard { border-radius: 3px; padding: 3px 5px; margin-bottom: 2px; cursor: pointer; border-left: 3px solid rgba(0,0,0,0.25); border: 1px solid rgba(0,0,0,0.12); border-left: 3px solid rgba(0,0,0,0.25); position: relative; }
+.jcard { border-radius: 3px; padding: 3px 5px; margin-bottom: 2px; cursor: grab; border-left: 3px solid rgba(0,0,0,0.25); border: 1px solid rgba(0,0,0,0.12); border-left: 3px solid rgba(0,0,0,0.25); position: relative; }
+.jcard:active { cursor: grabbing; }
 .jcard:hover { filter: brightness(0.9); }
+.jcard.dragging { opacity: 0.4; }
 .jcard:hover .jcard-menu { display: flex; }
 .jcard .jn { font-size: 10px; font-weight: 700; line-height: 1.3; }
 .jcard .js { font-size: 9.5px; opacity: 0.8; }
@@ -165,7 +166,6 @@ body { font-family: 'Saira', 'Segoe UI', Arial, sans-serif; background: #f0f4f8;
 
   .topbar > .nav-btn { display: none !important; }
   .topbar > .month-label { display: none !important; }
-  .btn-new { display: none !important; }
   .btn-refresh { display: none !important; }
 
   .cal-corner { width: 64px; min-width: 64px; font-size: 8px; padding: 3px 3px; }
@@ -244,7 +244,6 @@ body { font-family: 'Saira', 'Segoe UI', Arial, sans-serif; background: #f0f4f8;
     <button class="nav-btn" onclick="shiftWeeks(1)">&#8250;</button>
     <div class="topbar-spacer"></div>
     <span class="last-refresh-txt" id="last-refresh"></span>
-    <button class="btn-new" onclick="openAddModal(null,null)">New</button>
     <button class="btn-refresh" onclick="loadJobs()" title="Refresh">&#8635;</button>
     <span class="user-chip" id="user-name" onclick="signOut()" title="Sign out"></span>
     <div class="mobile-header-row" style="display:none">
@@ -409,6 +408,7 @@ const msalCfg = {
 const SCOPES = ['Sites.ReadWrite.All', 'User.Read'];
 let msalInst=null, allJobs=[], editId=null, siteId=null, weekOff=0, filterOn=false;
 let copySourceJobId = null;
+let draggingJobId = null, draggingFromDate = null;
 
 // ── AUTH ──────────────────────────────────────────────────────────
 async function initMsal() {
@@ -737,7 +737,7 @@ function renderCal() {
         const tc=isLight(bg)?'#111':'#fff';
         const clientOk = j['Client_x0020_has_x0020_approved_'];
         const titleColor = clientOk ? tc : '#cc0000';
-        h+=`<div class="jcard" data-jobid="${j.id}" style="background:${bg};color:${tc}">`
+        h+=`<div class="jcard" data-jobid="${j.id}" draggable="true" style="background:${bg};color:${tc}">`
         +`<div style="display:flex;justify-content:space-between;align-items:flex-start">`
         +`<div><div class="jn" style="pointer-events:none;color:${titleColor}">${xe(j.JobNumber||"")}${j.JobNumber&&j.Suburb?" - ":""}${xe(j.Suburb||j.Title||"")}</div>`
         +((j.CrewText||j.Crew)?`<div class="jc" style="pointer-events:none">${xe(j.CrewText||(Array.isArray(j.Crew)?j.Crew.join(', '):(j.Crew+'').replace(/;#/g,', ')))}</div>`:"")
@@ -767,6 +767,74 @@ function renderCal() {
       openNew(machine, date);
     }
   };
+
+  grid.ondragstart = function(e) {
+    const card = e.target.closest('.jcard');
+    if (!card || e.target.closest('.jcard-menu')) { e.preventDefault(); return; }
+    draggingJobId = card.dataset.jobid;
+    draggingFromDate = card.closest('.day-cell')?.dataset.date;
+    e.dataTransfer.effectAllowed = 'move';
+    setTimeout(() => card.classList.add('dragging'), 0);
+  };
+
+  grid.ondragover = function(e) {
+    if (!draggingJobId) return;
+    const cell = e.target.closest('.day-cell');
+    if (!cell) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (!cell.classList.contains('drag-over')) {
+      document.querySelectorAll('.day-cell.drag-over').forEach(el => el.classList.remove('drag-over'));
+      cell.classList.add('drag-over');
+    }
+  };
+
+  grid.ondragleave = function(e) {
+    const cell = e.target.closest('.day-cell');
+    if (cell && !cell.contains(e.relatedTarget)) cell.classList.remove('drag-over');
+  };
+
+  grid.ondragend = function() { cleanupDrag(); };
+
+  grid.ondrop = async function(e) {
+    e.preventDefault();
+    const cell = e.target.closest('.day-cell');
+    document.querySelectorAll('.day-cell.drag-over').forEach(el => el.classList.remove('drag-over'));
+    if (!cell || !draggingJobId || !draggingFromDate) { cleanupDrag(); return; }
+    const toDate = cell.dataset.date;
+    if (!toDate || toDate === draggingFromDate) { cleanupDrag(); return; }
+
+    const j = allJobs.find(x => x.id === draggingJobId);
+    if (!j) { cleanupDrag(); return; }
+
+    const deltaDays = Math.round((new Date(toDate) - new Date(draggingFromDate)) / 86400000);
+    const origStart = parseSpDate(j.Start_x0020_Date);
+    const origEnd = j.End_x0020_Date ? parseSpDate(j.End_x0020_Date) : new Date(origStart);
+    const newStart = new Date(origStart); newStart.setDate(newStart.getDate() + deltaDays);
+    const newEnd = new Date(origEnd);     newEnd.setDate(newEnd.getDate() + deltaDays);
+
+    cleanupDrag();
+    spin(true);
+    try {
+      const sid = await getSite();
+      await gfetch('PATCH', `/sites/${sid}/lists/${LIST_NAME}/items/${j.id}/fields`, {
+        'Start_x0020_Date': fdate(newStart) + 'T12:00:00.000Z',
+        'End_x0020_Date':   fdate(newEnd)   + 'T12:00:00.000Z'
+      });
+      toast('Job moved ✓', 'success');
+      loadJobs();
+    } catch(err) {
+      toast('Error: ' + err.message, 'error');
+      spin(false);
+    }
+  };
+}
+
+function cleanupDrag() {
+  draggingJobId = null;
+  draggingFromDate = null;
+  document.querySelectorAll('.jcard.dragging').forEach(c => c.classList.remove('dragging'));
+  document.querySelectorAll('.day-cell.drag-over').forEach(c => c.classList.remove('drag-over'));
 }
 
 function shiftWeeks(n) { weekOff+=n; renderCal(); }
