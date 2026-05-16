@@ -234,7 +234,7 @@ button { font:inherit; color:inherit; cursor:pointer; }
 .day-cell {
   padding:5px 5px; border-right:1px solid var(--line-2);
   display:flex; flex-direction:column; gap:var(--card-gap);
-  transition:background 100ms; min-width:0; overflow-y:auto; cursor:pointer; position:relative;
+  transition:background 100ms; min-width:0; overflow-y:visible; cursor:pointer; position:relative;
 }
 .day-cell:hover { background:oklch(0.985 0.005 250); }
 .day-cell:last-child { border-right:0; }
@@ -242,9 +242,6 @@ button { font:inherit; color:inherit; cursor:pointer; }
 .day-cell.today { background:linear-gradient(180deg,oklch(0.985 0.012 255) 0%,transparent 60%); }
 .day-cell.today:hover { background:oklch(0.975 0.018 255); }
 .day-cell.drop-hover { background:oklch(0.96 0.04 255) !important; box-shadow:inset 0 0 0 2px var(--accent); }
-.day-cell::-webkit-scrollbar { width:3px; }
-.day-cell::-webkit-scrollbar-thumb { background:var(--line-strong); border-radius:3px; }
-.day-cell::-webkit-scrollbar-track { background:transparent; }
 
 /* ---------- Job card ---------- */
 .job {
@@ -266,7 +263,7 @@ button { font:inherit; color:inherit; cursor:pointer; }
 }
 .job:active { cursor:grabbing; }
 .job.dragging { opacity:0.35; }
-.job.past { cursor:default; opacity:0.60; filter:grayscale(20%); }
+.job.past { cursor:default; opacity:0.78; filter:grayscale(15%); }
 .job.past:hover { transform:none; box-shadow:none; border-color:color-mix(in oklch,var(--c-bar,var(--line-strong)) 20%,transparent); }
 .job.past .job-copy { display:none !important; }
 .job.past::after { content:""; position:absolute; top:5px; right:7px; width:7px; height:7px; border-radius:999px; background:var(--line-strong); opacity:0.5; }
@@ -1008,9 +1005,9 @@ function getViewDates() {
     return dates;
   }
 
-  // month: 4 weeks
+  // month: 4 weeks — default (offset=0) starts from NEXT Monday (coming week first)
   const mon=new Date(today);
-  mon.setDate(today.getDate()-(dow===0?6:dow-1)+viewOffset*4*7);
+  mon.setDate(today.getDate()-(dow===0?6:dow-1)+7+viewOffset*4*7);
   const dates=[];
   for(let w=0;w<4;w++) {
     for(let d=0;d<5;d++) {
@@ -1062,12 +1059,10 @@ function renderCal() {
   // Use getBoundingClientRect for reliable height
   const wrapH=wrapRect.height||wrap.clientHeight;
   const availH=wrapH||(window.innerHeight-140);
-  const totalBodyH=Math.max(availH-headerH,200);
+  // Use tile weights as min-height per row (proportional) — rows grow to fit actual content
+  const minTileH = isMobile ? 52 : 70; // px per tile unit
   const tileWeights=machines.map(r=>r.tiles||1);
-  const totalWeight=tileWeights.reduce((a,b)=>a+b,0);
-  const rowHeights=tileWeights.map(w=>Math.floor(totalBodyH*w/totalWeight));
-  const usedH=rowHeights.reduce((a,b)=>a+b,0);
-  rowHeights[rowHeights.length-1]+=(totalBodyH-usedH);
+  const rowHeights=tileWeights.map(w=>w*minTileH);
 
   let h='';
 
@@ -1087,7 +1082,7 @@ function renderCal() {
     const catBar=getCatBarVar(row.label);
     const matchSet=new Set(row.matches.map(m=>m.toLowerCase()));
 
-    h+=`<div class="cat-row" style="grid-template-columns:${colTpl};height:${rowH}px">`;
+    h+=`<div class="cat-row" style="grid-template-columns:${colTpl};min-height:${rowH}px">`;
     h+=`<div class="cat-label" style="--cat-bar:${catBar}"><div class="row-bar"></div><div class="name">${xe(row.label)}</div></div>`;
 
     dates.forEach(d=>{
