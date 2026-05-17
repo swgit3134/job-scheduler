@@ -1716,7 +1716,10 @@ async function renderCalendarTab() {
   await loadCalendarEntries();
   const sorted=[...calendarEntries].sort((a,b)=>a.date>b.date?1:-1);
   el.innerHTML=`
-    <div class="admin-section-title">Public Holidays &amp; Company Closed Days</div>
+    <div class="admin-section-title" style="display:flex;align-items:center;justify-content:space-between">
+      <span>Public Holidays &amp; Company Closed Days</span>
+      ${sorted.length===0?`<button class="admin-add-btn" onclick="seedVicHolidays()" style="font-size:11.5px;padding:5px 12px">&#x1F4E5; Import VIC Holidays</button>`:''}
+    </div>
     <div class="admin-list">
       ${sorted.length?sorted.map(e=>`
         <div class="admin-list-item">
@@ -1728,7 +1731,7 @@ async function renderCalendarTab() {
             </div>
           </div>
           <button class="admin-remove" onclick="removeCalendarEntry('${e.id}')">✕ Remove</button>
-        </div>`).join(''):'<div class="admin-empty">No entries. Add below or edit via SharePoint.</div>'}
+        </div>`).join(''):'<div class="admin-empty">No entries yet — click "Import VIC Holidays" above to seed.</div>'}
     </div>
     <div class="admin-section-title">Add Entry</div>
     <div style="display:flex;flex-direction:column;gap:8px">
@@ -1771,6 +1774,23 @@ async function removeCalendarEntry(itemId) {
   } catch(e) { toast('Error: '+e.message,'error'); }
 }
 
+async function seedVicHolidays() {
+  const holidays=Object.entries(VIC_HOLIDAYS).map(([date,name])=>({date,name,type:'Public Holiday'}));
+  const btn=document.querySelector('#admin-panel-content .admin-add-btn');
+  if(btn){btn.textContent='Importing…';btn.disabled=true;}
+  try {
+    const sid=await getSite();
+    for(const h of holidays) {
+      await gfetch('POST',`/sites/${sid}/lists/${CALENDAR_LIST}/items`,{
+        fields:{Title:h.name,EventDate:h.date+'T00:00:00.000Z',EventType:h.type}
+      });
+    }
+    toast(`${holidays.length} holidays imported ✓`);
+    await loadCalendarEntries();
+    renderCal();
+    renderCalendarTab();
+  } catch(e) { toast('Error: '+e.message,'error'); if(btn){btn.textContent='Import VIC Holidays';btn.disabled=false;} }
+}
 // ── Manage Crew ──
 async function renderCrewTab() {
   const el=document.getElementById('admin-panel-content');
