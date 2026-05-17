@@ -1831,11 +1831,10 @@ async function lookupJobRegister(jobNum) {
   }
 }
 
-async function updateRegisterStatus(jobNum) {
+async function updateRegisterStatus(jobNum, status) {
   if(!jobNum) return;
   try {
     const sid=await getSite();
-    // Find the item if we don't already have the ID (e.g. on edit save)
     let rid=jrFoundId;
     if(!rid) {
       const enc=encodeURIComponent(jobNum);
@@ -1846,7 +1845,7 @@ async function updateRegisterStatus(jobNum) {
       rid=res.value?.[0]?.id;
     }
     if(!rid) return;
-    await gfetch('PATCH',`/sites/${sid}/lists/${REGISTER_LIST}/items/${rid}/fields`,{Status:'Fieldwork Scheduled'});
+    await gfetch('PATCH',`/sites/${sid}/lists/${REGISTER_LIST}/items/${rid}/fields`,{Status:status});
   } catch(e) { console.warn('Could not update JobsRegister status:',e.message); }
 }
 
@@ -1891,7 +1890,7 @@ async function saveSingleJob() {
   const sid=await getSite();
   if(editId) { await gfetch('PATCH',`/sites/${sid}/lists/${LIST_NAME}/items/${editId}/fields`,fields); toast('Job updated ✓'); }
   else { await gfetch('POST',`/sites/${sid}/lists/${LIST_NAME}/items`,{fields}); toast('Job created ✓'); }
-  if(jobNum) updateRegisterStatus(jobNum);
+  if(jobNum) updateRegisterStatus(jobNum,'Fieldwork Scheduled');
 }
 
 async function createMultipleDailyJobs() {
@@ -1924,7 +1923,7 @@ async function createMultipleDailyJobs() {
     count++;
   }
   toast(`Created ${count} jobs ✓`);
-  if(jobNum) updateRegisterStatus(jobNum);
+  if(jobNum) updateRegisterStatus(jobNum,'Fieldwork Scheduled');
 }
 
 async function deleteJob() {
@@ -1935,6 +1934,7 @@ async function deleteJob() {
     const sid=await getSite();
     await gfetch('DELETE',`/sites/${sid}/lists/${LIST_NAME}/items/${editId}`);
     toast('Deleted'); closeModal(); loadJobs();
+    if(j?.JobNumber) updateRegisterStatus(j.JobNumber,'Fieldwork to be booked');
   } catch(e) { toast('Error: '+e.message,'error'); }
 }
 
