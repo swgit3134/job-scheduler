@@ -531,6 +531,81 @@ button { font:inherit; color:inherit; cursor:pointer; }
   .corner { font-size:0; padding:6px 4px; }
   .cat-label .meta { display:none; }
 }
+
+/* ---------- Mode-toggle icons in subbar ---------- */
+.mode-toggle { display:inline-flex; gap:2px; }
+.mode-toggle button {
+  display:inline-flex; align-items:center; justify-content:center;
+  width:30px; height:30px; border:1px solid var(--line); border-radius:7px;
+  background:var(--surface); color:var(--ink-3); cursor:pointer;
+  transition:color 120ms, background 120ms, border-color 120ms;
+}
+.mode-toggle button:hover { color:var(--ink); border-color:var(--line-strong); }
+.mode-toggle button.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+
+/* ---------- List view ---------- */
+#list-wrap {
+  flex:1; overflow:auto; background:var(--bg); padding:12px 16px 16px; min-height:0; display:none;
+}
+.list-table-wrap {
+  background:var(--surface); border:1px solid var(--line); border-radius:14px;
+  overflow:hidden;
+  box-shadow:0 1px 2px rgba(15,20,35,0.03),0 8px 24px -16px rgba(15,20,35,0.08);
+}
+.list-table {
+  width:100%; border-collapse:collapse; font-size:13px;
+}
+.list-table thead th {
+  padding:10px 14px; text-align:left; font-size:11px; font-weight:600;
+  letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-3);
+  background:var(--surface); border-bottom:1px solid var(--line);
+  white-space:nowrap; position:sticky; top:0; z-index:2;
+}
+.list-table tbody tr {
+  border-bottom:1px solid var(--line-2); transition:background 80ms;
+}
+.list-table tbody tr:last-child { border-bottom:0; }
+.list-table tbody tr:hover { background:oklch(0.97 0.004 255); }
+.list-table tbody td {
+  padding:9px 14px; vertical-align:middle; color:var(--ink);
+}
+.list-table .td-machine { font-size:11px; font-weight:600; letter-spacing:0.05em; text-transform:uppercase; color:var(--ink-3); }
+.list-table .td-jobno { font-family:var(--font-mono); font-size:12px; font-weight:700; }
+.list-table .td-suburb { font-weight:500; }
+.list-table .td-date { font-size:12px; white-space:nowrap; color:var(--ink-2); }
+.list-table .td-crew { font-size:12px; color:var(--ink-2); }
+.list-table .td-notes { font-size:12px; color:var(--ink-3); max-width:220px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.list-table .td-bool { font-size:12px; text-align:center; }
+
+/* status badge in list */
+.list-badge {
+  display:inline-flex; align-items:center; gap:5px; padding:3px 8px;
+  border-radius:999px; font-size:11px; font-weight:600; white-space:nowrap;
+}
+.list-badge::before {
+  content:''; width:5px; height:5px; border-radius:999px; background:currentColor; flex-shrink:0;
+}
+.list-badge.status-confirmed { background:oklch(0.94 0.05 152); color:oklch(0.36 0.10 152); }
+.list-badge.status-tentative  { background:var(--yellow-bg); color:var(--yellow-ink); }
+.list-badge.status-cancelled  { background:oklch(0.94 0.04 18); color:oklch(0.45 0.13 18); }
+.list-badge.status-default    { background:var(--surface-2); color:var(--ink-3); }
+
+/* color-swatch on left edge of row */
+.list-swatch { width:4px; padding:0 !important; }
+.list-swatch-inner {
+  width:4px; min-height:38px; border-radius:2px;
+}
+.list-swatch-inner.sw-white  { background:var(--white-bar); }
+.list-swatch-inner.sw-yellow { background:var(--yellow-bar); }
+.list-swatch-inner.sw-green  { background:var(--green-bar); }
+.list-swatch-inner.sw-pink   { background:var(--pink-bar); }
+.list-swatch-inner.sw-blue   { background:var(--blue-bar); }
+.list-swatch-inner.sw-orange { background:var(--orange-bar); }
+
+/* list view empty state */
+.list-empty {
+  text-align:center; padding:60px 20px; color:var(--ink-3); font-size:14px;
+}
 </style>
 </head>
 <body>
@@ -605,7 +680,24 @@ button { font:inherit; color:inherit; cursor:pointer; }
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
         </svg>
-        <input id="search-input" placeholder="Search jobs…" oninput="renderCal()">
+        <input id="search-input" placeholder="Search jobs…" oninput="onSearchInput()">
+      </div>
+      <div class="mode-toggle">
+        <button id="mode-grid-btn" class="active" onclick="setMode('grid')" title="Grid view">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+            <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+          </svg>
+        </button>
+        <button id="mode-list-btn" onclick="setMode('list')" title="List view">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/>
+            <line x1="8" y1="18" x2="21" y2="18"/>
+            <circle cx="3" cy="6" r="1" fill="currentColor" stroke="none"/>
+            <circle cx="3" cy="12" r="1" fill="currentColor" stroke="none"/>
+            <circle cx="3" cy="18" r="1" fill="currentColor" stroke="none"/>
+          </svg>
+        </button>
       </div>
     </div>
   </div>
@@ -614,6 +706,29 @@ button { font:inherit; color:inherit; cursor:pointer; }
   <div class="schedule-wrap" id="schedule-wrap">
     <div class="schedule">
       <div class="schedule-grid" id="cal-grid"></div>
+    </div>
+  </div>
+
+  <!-- List view -->
+  <div id="list-wrap">
+    <div class="list-table-wrap">
+      <table class="list-table">
+        <thead>
+          <tr>
+            <th class="list-swatch" style="width:4px;padding:0"></th>
+            <th>Machine</th>
+            <th>Job Number</th>
+            <th>Status</th>
+            <th>Suburb</th>
+            <th>Date</th>
+            <th>Crew</th>
+            <th>Notes</th>
+            <th style="text-align:center">Client Approved</th>
+            <th style="text-align:center">Booked Subcon.</th>
+          </tr>
+        </thead>
+        <tbody id="list-tbody"></tbody>
+      </table>
     </div>
   </div>
 </div>
@@ -812,6 +927,7 @@ const msalCfg = {
 const SCOPES = ['Sites.ReadWrite.All','User.Read'];
 let msalInst=null, allJobs=[], editId=null, siteId=null, filterOn=false;
 let currentView='month', viewOffset=0;
+let currentMode='grid';
 let fieldMap={};
 let copySourceJobId=null;
 let draggingJobId=null, draggingFromDate=null, draggingFromMachine=null;
@@ -917,7 +1033,7 @@ async function loadJobs() {
     allJobs=d.value.map(i=>{return {id:i.id,...i.fields}});
     const refreshEl=document.getElementById('last-refresh');
     if(refreshEl) refreshEl.textContent=new Date().toLocaleString('en-AU',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
-    renderCal();
+    if(currentMode==='list') renderList(); else renderCal();
   } catch(e) { toast('Error: '+e.message,'error'); }
   spin(false);
 }
@@ -1241,6 +1357,88 @@ function setView(v) {
   document.querySelectorAll('.view-switcher button').forEach(b=>b.classList.remove('active'));
   const btn=document.getElementById('vbtn-'+v); if(btn) btn.classList.add('active');
   renderCal();
+}
+function setMode(m) {
+  currentMode=m;
+  const sw=document.getElementById('schedule-wrap');
+  const lw=document.getElementById('list-wrap');
+  const gb=document.getElementById('mode-grid-btn');
+  const lb=document.getElementById('mode-list-btn');
+  const vs=document.querySelector('.view-switcher');
+  const fb=document.getElementById('filter-btn');
+  if(m==='list') {
+    if(sw) sw.style.display='none';
+    if(lw) lw.style.display='';
+    if(gb) gb.classList.remove('active');
+    if(lb) lb.classList.add('active');
+    if(vs) vs.style.visibility='hidden';
+    if(fb) fb.style.display='none';
+    renderList();
+  } else {
+    if(sw) sw.style.display='';
+    if(lw) lw.style.display='none';
+    if(gb) gb.classList.add('active');
+    if(lb) lb.classList.remove('active');
+    if(vs) vs.style.visibility='';
+    if(fb) fb.style.display='';
+    renderCal();
+  }
+}
+function onSearchInput() {
+  if(currentMode==='list') renderList(); else renderCal();
+}
+function formatDisplayDate(dateStr) {
+  if(!dateStr) return '—';
+  const d=new Date(dateStr+'T12:00:00');
+  if(isNaN(d)) return dateStr;
+  return d.toLocaleDateString('en-AU',{day:'2-digit',month:'short',year:'numeric'});
+}
+function renderList() {
+  const tbody=document.getElementById('list-tbody');
+  if(!tbody) return;
+  const q=(document.getElementById('search-input')?.value||'').toLowerCase();
+  const sorted=[...allJobs].sort((a,b)=>{
+    const da=a.Start_x0020_Date||'';
+    const db=b.Start_x0020_Date||'';
+    return da<db?-1:da>db?1:0;
+  });
+  const filtered=sorted.filter(j=>{
+    if(!q) return true;
+    return (j.JobNumber||'').toLowerCase().includes(q)
+      ||(j.Suburb||'').toLowerCase().includes(q)
+      ||(j.Status||'').toLowerCase().includes(q)
+      ||(j.Machine||'').toLowerCase().includes(q)
+      ||(j.Notes||'').toLowerCase().includes(q)
+      ||((j.Crew||[]).join(' ')).toLowerCase().includes(q);
+  });
+  if(filtered.length===0) {
+    tbody.innerHTML=`<tr><td colspan="10" class="list-empty">${q?'No jobs match your search.':'No jobs found.'}</td></tr>`;
+    return;
+  }
+  tbody.innerHTML=filtered.map(j=>{
+    const color=getColorSlug(j);
+    const status=(j.Status||'').trim();
+    const sl=getStatusSlug(status);
+    const badgeCls=sl==='confirmed'?'status-confirmed':sl==='tentative'?'status-tentative':sl==='cancelled'?'status-cancelled':'status-default';
+    const crew=Array.isArray(j.Crew)?j.Crew.join(', '):(j.Crew||'');
+    const dateStr=j.Start_x0020_Date?formatDisplayDate(j.Start_x0020_Date.split('T')[0]):'—';
+    const dateEnd=j.End_x0020_Date&&j.End_x0020_Date.split('T')[0]!==j.Start_x0020_Date?.split('T')[0]
+      ?' – '+formatDisplayDate(j.End_x0020_Date.split('T')[0]):'';
+    const approved=j.ClientApproved?'✓':'';
+    const subcon=j.BookedSubcontractor?'✓':'';
+    return `<tr>
+      <td class="list-swatch"><div class="list-swatch-inner sw-${color}"></div></td>
+      <td class="td-machine">${j.Machine||'—'}</td>
+      <td class="td-jobno">${j.JobNumber||'—'}</td>
+      <td><span class="list-badge ${badgeCls}">${status||'—'}</span></td>
+      <td class="td-suburb">${j.Suburb||'—'}</td>
+      <td class="td-date">${dateStr}${dateEnd}</td>
+      <td class="td-crew">${crew||'—'}</td>
+      <td class="td-notes" title="${(j.Notes||'').replace(/"/g,'&quot;')}">${j.Notes||'—'}</td>
+      <td class="td-bool">${approved}</td>
+      <td class="td-bool">${subcon}</td>
+    </tr>`;
+  }).join('');
 }
 function toggleFilter() {
   filterOn=!filterOn;
