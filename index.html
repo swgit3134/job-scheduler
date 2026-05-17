@@ -865,7 +865,8 @@ button { font:inherit; color:inherit; cursor:pointer; }
       <!-- Row 1 -->
       <div class="field">
         <label for="f-jobnumber">Job Number</label>
-        <input type="text" id="f-jobnumber" placeholder="e.g. J-2024-001">
+        <input type="text" id="f-jobnumber" placeholder="e.g. J-2024-001" oninput="onJobNumberInput(this.value)" autocomplete="off">
+        <div id="jr-status" style="font-size:11.5px;margin-top:4px;min-height:16px;display:flex;align-items:center;gap:5px"></div>
       </div>
       <div class="field">
         <label for="f-machine">Machine</label>
@@ -1006,6 +1007,7 @@ const CLIENT_ID = 'b2580766-8f12-4e30-8180-113536a3bd5d';
 const TENANT_ID = '4ef29fa0-9468-4620-8514-1cf4538b9702';
 const SITE_URL  = 'statewidedrilling.sharepoint.com:/sites/AppsPortal:';
 const LIST_NAME = 'JobScheduler';
+const REGISTER_LIST = 'JobsRegister';
 
 const DAYS        = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const MONTHS      = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -1778,12 +1780,76 @@ function clearForm() {
   selectedCrew=[];
   updateCrewDisplay();
   setColorPicker('');
+  jrFoundId=null;
+  const jrEl=document.getElementById('jr-status'); if(jrEl) jrEl.innerHTML='';
 }
 
 function closeModal() { document.getElementById('modal-bg').classList.remove('open'); }
 function bgClose(e) { if(e.target===document.getElementById('modal-bg')) closeModal(); }
 
 // ── SAVE / DELETE ─────────────────────────────────────────────────
+// ── JOBS REGISTER LOOKUP ─────────────────────────────────────────
+let jrLookupTimer=null;
+let jrFoundId=null; // SharePoint item ID in JobsRegister for the current job number
+
+function onJobNumberInput(val) {
+  clearTimeout(jrLookupTimer);
+  jrFoundId=null;
+  const el=document.getElementById('jr-status');
+  const v=val.trim();
+  if(!v) { if(el) el.innerHTML=''; return; }
+  if(el) el.innerHTML='<span style="color:var(--ink-3)">Looking up…</span>';
+  jrLookupTimer=setTimeout(()=>lookupJobRegister(v),600);
+}
+
+async function lookupJobRegister(jobNum) {
+  const el=document.getElementById('jr-status');
+  try {
+    const sid=await getSite();
+    // Filter by JobNumber column — try Title first (common SP default), then JobNumber
+    const enc=encodeURIComponent(jobNum);
+    const url=`/sites/${sid}/lists/${REGISTER_LIST}/items?expand=fields&$filter=fields/Title eq '${enc}'&$top=5`;
+    const res=await gfetch('GET',url);
+    let item=res.value&&res.value[0];
+    if(!item) {
+      // fallback: search by JobNumber field if list uses a dedicated column
+      const url2=`/sites/${sid}/lists/${REGISTER_LIST}/items?expand=fields&$filter=fields/JobNumber eq '${enc}'&$top=5`;
+      const res2=await gfetch('GET',url2).catch(()=>({value:[]}));
+      item=res2.value&&res2.value[0];
+    }
+    if(!item) {
+      if(el) el.innerHTML='<span style="color:oklch(0.55 0.15 28)">&#x26A0; Job number not found in Jobs Register</span>';
+      return;
+    }
+    jrFoundId=item.id;
+    const suburb=item.fields?.Suburb||item.fields?.Location||item.fields?.SuburbLocation||'';
+    const subEl=document.getElementById('f-suburb');
+    if(suburb&&subEl&&!subEl.value) subEl.value=suburb;
+    if(el) el.innerHTML=`<span style="color:var(--status-confirmed)">&#x2713; Found in Jobs Register${suburb?' — Suburb populated':''}`;
+  } catch(e) {
+    if(el) el.innerHTML='<span style="color:var(--ink-3)">Could not reach Jobs Register</span>';
+  }
+}
+
+async function updateRegisterStatus(jobNum) {
+  if(!jobNum) return;
+  try {
+    const sid=await getSite();
+    // Find the item if we don't already have the ID (e.g. on edit save)
+    let rid=jrFoundId;
+    if(!rid) {
+      const enc=encodeURIComponent(jobNum);
+      let res=await gfetch('GET',`/sites/${sid}/lists/${REGISTER_LIST}/items?expand=fields&$filter=fields/Title eq '${enc}'&$top=1`);
+      if(!res.value?.length) {
+        res=await gfetch('GET',`/sites/${sid}/lists/${REGISTER_LIST}/items?expand=fields&$filter=fields/JobNumber eq '${enc}'&$top=1`).catch(()=>({value:[]}));
+      }
+      rid=res.value?.[0]?.id;
+    }
+    if(!rid) return;
+    await gfetch('PATCH',`/sites/${sid}/lists/${REGISTER_LIST}/items/${rid}/fields`,{Status:'Fieldwork Scheduled'});
+  } catch(e) { console.warn('Could not update JobsRegister status:',e.message); }
+}
+
 async function saveJob() {
   const machine=document.getElementById('f-machine').value;
   if(!machine) { toast('Please select a machine','error'); return; }
@@ -1825,6 +1891,7 @@ async function saveSingleJob() {
   const sid=await getSite();
   if(editId) { await gfetch('PATCH',`/sites/${sid}/lists/${LIST_NAME}/items/${editId}/fields`,fields); toast('Job updated ✓'); }
   else { await gfetch('POST',`/sites/${sid}/lists/${LIST_NAME}/items`,{fields}); toast('Job created ✓'); }
+  if(jobNum) updateRegisterStatus(jobNum);
 }
 
 async function createMultipleDailyJobs() {
@@ -1857,6 +1924,7 @@ async function createMultipleDailyJobs() {
     count++;
   }
   toast(`Created ${count} jobs ✓`);
+  if(jobNum) updateRegisterStatus(jobNum);
 }
 
 async function deleteJob() {
