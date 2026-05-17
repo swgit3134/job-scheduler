@@ -543,6 +543,79 @@ button { font:inherit; color:inherit; cursor:pointer; }
 .mode-toggle button:hover { color:var(--ink); border-color:var(--line-strong); }
 .mode-toggle button.active { background:var(--accent); color:#fff; border-color:var(--accent); }
 
+/* ---------- Crew view ---------- */
+#crew-wrap {
+  flex:1; overflow:auto; background:var(--bg); display:none; flex-direction:column;
+}
+.crew-hero {
+  background:var(--surface); border-bottom:1px solid var(--line); padding:20px 20px 18px;
+  flex-shrink:0;
+}
+.crew-hero-inner { max-width:480px; }
+.crew-select-label { font-size:11px; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:var(--ink-3); margin-bottom:8px; }
+#crew-name-select {
+  width:100%; padding:10px 14px; font-size:15px; font-weight:600;
+  border:1.5px solid var(--line); border-radius:10px;
+  background:var(--bg); color:var(--ink); cursor:pointer;
+  appearance:none; -webkit-appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat:no-repeat; background-position:right 12px center;
+  padding-right:36px;
+}
+#crew-name-select:focus { outline:0; border-color:var(--accent); box-shadow:0 0 0 3px oklch(0.48 0.16 255 / 0.12); }
+#crew-cards {
+  flex:1; padding:16px 20px 24px;
+  display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:12px;
+  align-content:start;
+}
+.crew-empty {
+  grid-column:1/-1; text-align:center; padding:60px 20px;
+  color:var(--ink-3); font-size:14px;
+}
+.crew-empty strong { display:block; font-size:16px; color:var(--ink-2); margin-bottom:6px; }
+.crew-card {
+  background:var(--surface); border:1px solid var(--line); border-radius:12px;
+  overflow:hidden; display:flex; flex-direction:column;
+  box-shadow:0 1px 2px rgba(15,20,35,0.04);
+  transition:box-shadow 120ms, transform 120ms;
+}
+.crew-card:hover { box-shadow:0 4px 16px rgba(15,20,35,0.08); transform:translateY(-1px); }
+.crew-card-bar { height:4px; flex-shrink:0; }
+.crew-card-bar.sw-white  { background:var(--white-bar); }
+.crew-card-bar.sw-yellow { background:var(--yellow-bar); }
+.crew-card-bar.sw-green  { background:var(--green-bar); }
+.crew-card-bar.sw-pink   { background:var(--pink-bar); }
+.crew-card-bar.sw-blue   { background:var(--blue-bar); }
+.crew-card-bar.sw-orange { background:var(--orange-bar); }
+.crew-card-body { padding:14px 16px; flex:1; display:flex; flex-direction:column; gap:8px; }
+.crew-card-date {
+  font-size:12px; font-weight:600; color:var(--accent-ink);
+  background:oklch(0.94 0.035 255); display:inline-flex; align-items:center; gap:5px;
+  padding:3px 9px; border-radius:999px; width:fit-content;
+}
+.crew-card-date svg { flex-shrink:0; }
+.crew-card-date.past { background:var(--surface-2); color:var(--ink-3); }
+.crew-card-main { display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; }
+.crew-card-jobno { font-family:var(--font-mono); font-size:14px; font-weight:700; color:var(--ink); }
+.crew-card-suburb { font-size:13px; color:var(--ink-2); }
+.crew-card-meta { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+.crew-card-machine {
+  font-size:10px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase;
+  color:var(--ink-3); background:var(--surface-2); padding:2px 7px; border-radius:4px;
+}
+.crew-card-crew { font-size:12px; color:var(--ink-3); }
+.crew-card-notes { font-size:12px; color:var(--ink-3); border-top:1px solid var(--line-2); padding-top:8px; margin-top:2px; }
+.crew-week-label {
+  grid-column:1/-1; font-size:11px; font-weight:700; letter-spacing:0.1em;
+  text-transform:uppercase; color:var(--ink-3); padding:4px 0 2px;
+  border-bottom:1px solid var(--line-2); margin-bottom:2px;
+}
+
+@media (max-width:600px) {
+  #crew-cards { grid-template-columns:1fr; padding:12px 12px 20px; }
+  .crew-hero { padding:14px 12px 12px; }
+}
+
 /* ---------- List view ---------- */
 #list-wrap {
   flex:1; overflow:auto; background:var(--bg); padding:12px 16px 16px; min-height:0; display:none;
@@ -706,6 +779,12 @@ button { font:inherit; color:inherit; cursor:pointer; }
             <circle cx="3" cy="18" r="1" fill="currentColor" stroke="none"/>
           </svg>
         </button>
+        <button id="mode-crew-btn" onclick="setMode('crew')" title="My schedule">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="8" r="4"/>
+            <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+          </svg>
+        </button>
       </div>
     </div>
   </div>
@@ -715,6 +794,19 @@ button { font:inherit; color:inherit; cursor:pointer; }
     <div class="schedule">
       <div class="schedule-grid" id="cal-grid"></div>
     </div>
+  </div>
+
+  <!-- Crew view -->
+  <div id="crew-wrap">
+    <div class="crew-hero">
+      <div class="crew-hero-inner">
+        <div class="crew-select-label">Viewing schedule for</div>
+        <select id="crew-name-select" onchange="renderCrewView()">
+          <option value="">— Select your name —</option>
+        </select>
+      </div>
+    </div>
+    <div id="crew-cards"></div>
   </div>
 
   <!-- List view -->
@@ -1041,7 +1133,7 @@ async function loadJobs() {
     allJobs=d.value.map(i=>{return {id:i.id,...i.fields}});
     const refreshEl=document.getElementById('last-refresh');
     if(refreshEl) refreshEl.textContent=new Date().toLocaleString('en-AU',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
-    if(currentMode==='list') renderList(); else renderCal();
+    if(currentMode==='list') renderList(); else if(currentMode==='crew') renderCrewView(); else renderCal();
   } catch(e) { toast('Error: '+e.message,'error'); }
   spin(false);
 }
@@ -1370,33 +1462,120 @@ function setMode(m) {
   currentMode=m;
   const sw=document.getElementById('schedule-wrap');
   const lw=document.getElementById('list-wrap');
+  const cw=document.getElementById('crew-wrap');
   const gb=document.getElementById('mode-grid-btn');
   const lb=document.getElementById('mode-list-btn');
+  const cb=document.getElementById('mode-crew-btn');
   const vs=document.querySelector('.view-switcher');
   const fb=document.getElementById('filter-btn');
   const sf=document.getElementById('list-status-filter');
+  const si=document.getElementById('search-input');
+  // hide all panels
+  if(sw) sw.style.display='none';
+  if(lw) lw.style.display='none';
+  if(cw) cw.style.display='none';
+  [gb,lb,cb].forEach(b=>b&&b.classList.remove('active'));
+  if(vs) vs.style.visibility='hidden';
+  if(fb) fb.style.display='none';
+  if(sf) sf.style.display='none';
+  if(si) si.parentElement.style.display='none';
   if(m==='list') {
-    if(sw) sw.style.display='none';
     if(lw) lw.style.display='block';
-    if(gb) gb.classList.remove('active');
     if(lb) lb.classList.add('active');
-    if(vs) vs.style.visibility='hidden';
-    if(fb) fb.style.display='none';
     if(sf) sf.style.display='';
+    if(si) si.parentElement.style.display='';
     renderList();
+  } else if(m==='crew') {
+    if(cw) cw.style.display='flex';
+    if(cb) cb.classList.add('active');
+    populateCrewSelect();
+    renderCrewView();
   } else {
     if(sw) sw.style.display='';
-    if(lw) lw.style.display='none';
     if(gb) gb.classList.add('active');
-    if(lb) lb.classList.remove('active');
     if(vs) vs.style.visibility='';
     if(fb) fb.style.display='';
-    if(sf) sf.style.display='none';
+    if(si) si.parentElement.style.display='';
     renderCal();
   }
 }
 function onSearchInput() {
-  if(currentMode==='list') renderList(); else renderCal();
+  if(currentMode==='list') renderList(); else if(currentMode==='grid') renderCal();
+}
+function populateCrewSelect() {
+  const sel=document.getElementById('crew-name-select');
+  if(!sel) return;
+  const current=sel.value;
+  sel.innerHTML='<option value="">— Select your name —</option>'
+    +CREW_LIST.map(n=>`<option value="${n}"${n===current?' selected':''}>${n}</option>`).join('');
+}
+function renderCrewView() {
+  const container=document.getElementById('crew-cards');
+  if(!container) return;
+  const name=document.getElementById('crew-name-select')?.value||'';
+  if(!name) {
+    container.innerHTML='<div class="crew-empty"><strong>Who are you?</strong>Select your name above to see your upcoming jobs.</div>';
+    return;
+  }
+  const today=new Date(); today.setHours(0,0,0,0);
+  const jobs=allJobs.filter(j=>{
+    const crew=Array.isArray(j.Crew)?j.Crew:(j.Crew?[j.Crew]:[]);
+    if(!crew.some(c=>c===name)) return false;
+    const start=j.Start_x0020_Date?new Date(j.Start_x0020_Date.split('T')[0]+'T12:00:00'):null;
+    return start&&start>=today;
+  }).sort((a,b)=>(a.Start_x0020_Date||'')>(b.Start_x0020_Date||'')?1:-1);
+  if(jobs.length===0) {
+    container.innerHTML=`<div class="crew-empty"><strong>All clear, ${name}!</strong>No upcoming jobs scheduled.</div>`;
+    return;
+  }
+  // group by ISO week
+  let lastWeek='';
+  container.innerHTML=jobs.map(j=>{
+    const startStr=j.Start_x0020_Date.split('T')[0];
+    const startD=new Date(startStr+'T12:00:00');
+    const endStr=j.End_x0020_Date?j.End_x0020_Date.split('T')[0]:startStr;
+    const endD=new Date(endStr+'T12:00:00');
+    // week label: "Week of Mon DD MMM"
+    const weekMon=new Date(startD);
+    weekMon.setDate(startD.getDate()-(startD.getDay()===0?6:startD.getDay()-1));
+    const weekKey=weekMon.toISOString().split('T')[0];
+    let weekLabel='';
+    if(weekKey!==lastWeek) {
+      lastWeek=weekKey;
+      const wl=weekMon.toLocaleDateString('en-AU',{day:'2-digit',month:'short'});
+      weekLabel=`<div class="crew-week-label">Week of ${wl}</div>`;
+    }
+    const color=getColorSlug(j);
+    const isPast=endD<today;
+    const dateLabel=startStr===endStr
+      ?startD.toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short'})
+      :startD.toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short'})
+       +' – '+endD.toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short'});
+    const allCrew=Array.isArray(j.Crew)?j.Crew:(j.Crew?[j.Crew]:[]);
+    const others=allCrew.filter(c=>c!==name);
+    const status=(j.Status||'').trim();
+    const sl=getStatusSlug(status);
+    const badgeCls=sl==='confirmed'?'status-confirmed':sl==='tentative'?'status-tentative':sl==='cancelled'?'status-cancelled':'status-default';
+    return `${weekLabel}<div class="crew-card">
+      <div class="crew-card-bar sw-${color}"></div>
+      <div class="crew-card-body">
+        <div class="crew-card-date${isPast?' past':''}">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          ${dateLabel}
+        </div>
+        <div class="crew-card-main">
+          <span class="crew-card-jobno">${j.JobNumber||'—'}</span>
+          ${j.Suburb?`<span class="crew-card-suburb">${j.Suburb}</span>`:''}
+        </div>
+        <div class="crew-card-meta">
+          ${j.Machine?`<span class="crew-card-machine">${j.Machine}</span>`:''}
+          <span class="list-badge ${badgeCls}" style="font-size:10.5px;padding:2px 7px">${status||'—'}</span>
+        </div>
+        ${others.length?`<div class="crew-card-crew">With: ${others.join(', ')}</div>`:''}
+        ${j.Notes?`<div class="crew-card-notes">${j.Notes}</div>`:''}
+      </div>
+    </div>`;
+  }).join('');
 }
 function formatDisplayDate(dateStr) {
   if(!dateStr) return '—';
