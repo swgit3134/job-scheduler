@@ -1007,7 +1007,7 @@ const CLIENT_ID = 'b2580766-8f12-4e30-8180-113536a3bd5d';
 const TENANT_ID = '4ef29fa0-9468-4620-8514-1cf4538b9702';
 const SITE_URL  = 'statewidedrilling.sharepoint.com:/sites/AppsPortal:';
 const LIST_NAME = 'JobScheduler';
-const REGISTER_LIST = 'JobsRegister';
+const REGISTER_LIST = '02bbdf28-3c0b-49b8-affb-b91b28a5ee19'; // JobsRegister list GUID
 
 const DAYS        = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const MONTHS      = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -1802,28 +1802,25 @@ function onJobNumberInput(val) {
   jrLookupTimer=setTimeout(()=>lookupJobRegister(v),600);
 }
 
+async function fetchRegisterItems(sid) {
+  const res=await gfetch('GET',`/sites/${sid}/lists/${REGISTER_LIST}/items?expand=fields&$top=2000&$select=id,fields`);
+  return res.value||[];
+}
+function matchRegisterItem(items, jobNum) {
+  const q=(jobNum||'').trim().toLowerCase();
+  return items.find(i=>{
+    const f=i.fields||{};
+    return (f.Title||'').toLowerCase()===q
+        || (f.JobNumber||'').toLowerCase()===q
+        || (f.Job_x0020_Number||'').toLowerCase()===q;
+  })||null;
+}
 async function lookupJobRegister(jobNum) {
   const el=document.getElementById('jr-status');
   try {
     const sid=await getSite();
-    // Try fetching the item — filter client-side to avoid OData encoding issues
-    // Try list name with and without space
-    let items=null;
-    for(const listName of [REGISTER_LIST,'Jobs Register','JobsRegister']) {
-      try {
-        const res=await gfetch('GET',`/sites/${sid}/lists/${encodeURIComponent(listName)}/items?expand=fields&$top=999&$select=id,fields`);
-        items=res.value||[];
-        break;
-      } catch(e) { continue; }
-    }
-    if(items===null) throw new Error('List not found — check REGISTER_LIST name');
-    const q=jobNum.trim().toLowerCase();
-    const item=items.find(i=>{
-      const f=i.fields||{};
-      return (f.Title||'').toLowerCase()===q
-          || (f.JobNumber||'').toLowerCase()===q
-          || (f.Job_x0020_Number||'').toLowerCase()===q;
-    });
+    const items=await fetchRegisterItems(sid);
+    const item=matchRegisterItem(items,jobNum);
     if(!item) {
       if(el) el.innerHTML='<span style="color:oklch(0.55 0.15 28)">&#x26A0; Job number not found in Jobs Register</span>';
       return;
@@ -1836,35 +1833,21 @@ async function lookupJobRegister(jobNum) {
     if(el) el.innerHTML=`<span style="color:var(--status-confirmed)">&#x2713; Found in Jobs Register${suburb?' — Suburb populated':''}`;
   } catch(e) {
     console.error('JobsRegister lookup error:',e.message);
-    if(el) el.innerHTML=`<span style="color:oklch(0.55 0.15 28)" title="${e.message}">&#x26A0; Could not reach Jobs Register: ${e.message}</span>`;
+    if(el) el.innerHTML=`<span style="color:oklch(0.55 0.15 28)" title="${e.message}">&#x26A0; ${e.message}</span>`;
   }
-}
-
-async function findRegisterItem(sid, jobNum) {
-  const q=jobNum.trim().toLowerCase();
-  for(const listName of [REGISTER_LIST,'Jobs Register','JobsRegister']) {
-    try {
-      const res=await gfetch('GET',`/sites/${sid}/lists/${encodeURIComponent(listName)}/items?expand=fields&$top=999&$select=id,fields`);
-      const item=(res.value||[]).find(i=>{
-        const f=i.fields||{};
-        return (f.Title||'').toLowerCase()===q||(f.JobNumber||'').toLowerCase()===q||(f.Job_x0020_Number||'').toLowerCase()===q;
-      });
-      if(item) return {listName,itemId:item.id};
-    } catch(e) { continue; }
-  }
-  return null;
 }
 async function updateRegisterStatus(jobNum, status) {
   if(!jobNum) return;
   try {
     const sid=await getSite();
-    let listName=REGISTER_LIST, rid=jrFoundId;
+    let rid=jrFoundId;
     if(!rid) {
-      const found=await findRegisterItem(sid,jobNum);
-      if(!found) { console.warn('JobsRegister: item not found for',jobNum); return; }
-      listName=found.listName; rid=found.itemId;
+      const items=await fetchRegisterItems(sid);
+      const item=matchRegisterItem(items,jobNum);
+      if(!item) { console.warn('JobsRegister: item not found for',jobNum); return; }
+      rid=item.id;
     }
-    await gfetch('PATCH',`/sites/${sid}/lists/${encodeURIComponent(listName)}/items/${rid}/fields`,{Status:status});
+    await gfetch('PATCH',`/sites/${sid}/lists/${REGISTER_LIST}/items/${rid}/fields`,{Status:status});
   } catch(e) { console.warn('Could not update JobsRegister status:',e.message); }
 }
 
