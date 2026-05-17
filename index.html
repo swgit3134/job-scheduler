@@ -1266,13 +1266,18 @@ function getViewDates() {
   const isMob=isMobileView();
 
   if(currentView==='day') {
-    const d=new Date(today); d.setDate(today.getDate()+viewOffset);
+    // If today is Sat or Sun, anchor to the coming Monday
+    const dayBase=new Date(today);
+    if(dow===6) dayBase.setDate(today.getDate()+2);
+    else if(dow===0) dayBase.setDate(today.getDate()+1);
+    const d=new Date(dayBase); d.setDate(dayBase.getDate()+viewOffset);
     d._weekIndex=0; return [d];
   }
 
   if(currentView==='week'||(currentView==='month'&&isMob)) {
+    // Anchor to the coming Monday (+7 so offset=0 = next week, same logic as month view)
     const mon=new Date(today);
-    mon.setDate(today.getDate()-(dow===0?6:dow-1)+viewOffset*7);
+    mon.setDate(today.getDate()-(dow===0?6:dow-1)+7+viewOffset*7);
     const dates=[];
     for(let d=0;d<5;d++) {
       const day=new Date(mon); day.setDate(mon.getDate()+d);
