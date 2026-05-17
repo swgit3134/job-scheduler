@@ -1934,7 +1934,9 @@ async function deleteJob() {
     const sid=await getSite();
     await gfetch('DELETE',`/sites/${sid}/lists/${LIST_NAME}/items/${editId}`);
     toast('Deleted'); closeModal(); loadJobs();
-    if(j?.JobNumber) updateRegisterStatus(j.JobNumber,'Fieldwork to be booked');
+    // Only revert if this was the last scheduler entry for this job number
+    const remainingDates=allJobs.filter(x=>x.id!==editId&&x.JobNumber&&x.JobNumber===j?.JobNumber);
+    if(j?.JobNumber&&remainingDates.length===0) updateRegisterStatus(j.JobNumber,'Fieldwork to be booked');
   } catch(e) { toast('Error: '+e.message,'error'); }
 }
 
