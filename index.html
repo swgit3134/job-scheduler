@@ -1806,46 +1806,65 @@ async function lookupJobRegister(jobNum) {
   const el=document.getElementById('jr-status');
   try {
     const sid=await getSite();
-    // Filter by JobNumber column — try Title first (common SP default), then JobNumber
-    const enc=encodeURIComponent(jobNum);
-    const url=`/sites/${sid}/lists/${REGISTER_LIST}/items?expand=fields&$filter=fields/Title eq '${enc}'&$top=5`;
-    const res=await gfetch('GET',url);
-    let item=res.value&&res.value[0];
-    if(!item) {
-      // fallback: search by JobNumber field if list uses a dedicated column
-      const url2=`/sites/${sid}/lists/${REGISTER_LIST}/items?expand=fields&$filter=fields/JobNumber eq '${enc}'&$top=5`;
-      const res2=await gfetch('GET',url2).catch(()=>({value:[]}));
-      item=res2.value&&res2.value[0];
+    // Try fetching the item — filter client-side to avoid OData encoding issues
+    // Try list name with and without space
+    let items=null;
+    for(const listName of [REGISTER_LIST,'Jobs Register','JobsRegister']) {
+      try {
+        const res=await gfetch('GET',`/sites/${sid}/lists/${encodeURIComponent(listName)}/items?expand=fields&$top=999&$select=id,fields`);
+        items=res.value||[];
+        break;
+      } catch(e) { continue; }
     }
+    if(items===null) throw new Error('List not found — check REGISTER_LIST name');
+    const q=jobNum.trim().toLowerCase();
+    const item=items.find(i=>{
+      const f=i.fields||{};
+      return (f.Title||'').toLowerCase()===q
+          || (f.JobNumber||'').toLowerCase()===q
+          || (f.Job_x0020_Number||'').toLowerCase()===q;
+    });
     if(!item) {
       if(el) el.innerHTML='<span style="color:oklch(0.55 0.15 28)">&#x26A0; Job number not found in Jobs Register</span>';
       return;
     }
     jrFoundId=item.id;
-    const suburb=item.fields?.Suburb||item.fields?.Location||item.fields?.SuburbLocation||'';
+    const f=item.fields||{};
+    const suburb=f.Suburb||f.Location||f.SuburbLocation||f.Suburb0||'';
     const subEl=document.getElementById('f-suburb');
     if(suburb&&subEl&&!subEl.value) subEl.value=suburb;
     if(el) el.innerHTML=`<span style="color:var(--status-confirmed)">&#x2713; Found in Jobs Register${suburb?' — Suburb populated':''}`;
   } catch(e) {
-    if(el) el.innerHTML='<span style="color:var(--ink-3)">Could not reach Jobs Register</span>';
+    console.error('JobsRegister lookup error:',e.message);
+    if(el) el.innerHTML=`<span style="color:oklch(0.55 0.15 28)" title="${e.message}">&#x26A0; Could not reach Jobs Register: ${e.message}</span>`;
   }
 }
 
+async function findRegisterItem(sid, jobNum) {
+  const q=jobNum.trim().toLowerCase();
+  for(const listName of [REGISTER_LIST,'Jobs Register','JobsRegister']) {
+    try {
+      const res=await gfetch('GET',`/sites/${sid}/lists/${encodeURIComponent(listName)}/items?expand=fields&$top=999&$select=id,fields`);
+      const item=(res.value||[]).find(i=>{
+        const f=i.fields||{};
+        return (f.Title||'').toLowerCase()===q||(f.JobNumber||'').toLowerCase()===q||(f.Job_x0020_Number||'').toLowerCase()===q;
+      });
+      if(item) return {listName,itemId:item.id};
+    } catch(e) { continue; }
+  }
+  return null;
+}
 async function updateRegisterStatus(jobNum, status) {
   if(!jobNum) return;
   try {
     const sid=await getSite();
-    let rid=jrFoundId;
+    let listName=REGISTER_LIST, rid=jrFoundId;
     if(!rid) {
-      const enc=encodeURIComponent(jobNum);
-      let res=await gfetch('GET',`/sites/${sid}/lists/${REGISTER_LIST}/items?expand=fields&$filter=fields/Title eq '${enc}'&$top=1`);
-      if(!res.value?.length) {
-        res=await gfetch('GET',`/sites/${sid}/lists/${REGISTER_LIST}/items?expand=fields&$filter=fields/JobNumber eq '${enc}'&$top=1`).catch(()=>({value:[]}));
-      }
-      rid=res.value?.[0]?.id;
+      const found=await findRegisterItem(sid,jobNum);
+      if(!found) { console.warn('JobsRegister: item not found for',jobNum); return; }
+      listName=found.listName; rid=found.itemId;
     }
-    if(!rid) return;
-    await gfetch('PATCH',`/sites/${sid}/lists/${REGISTER_LIST}/items/${rid}/fields`,{Status:status});
+    await gfetch('PATCH',`/sites/${sid}/lists/${encodeURIComponent(listName)}/items/${rid}/fields`,{Status:status});
   } catch(e) { console.warn('Could not update JobsRegister status:',e.message); }
 }
 
