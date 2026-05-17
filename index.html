@@ -676,6 +676,14 @@ button { font:inherit; color:inherit; cursor:pointer; }
       <button class="chip-btn" id="filter-btn" onclick="toggleFilter()" title="Show scheduled jobs only">
         <span class="dot"></span><span>Scheduled only</span>
       </button>
+      <select id="list-status-filter" onchange="renderList()" style="display:none;padding:6px 10px;border:1px solid var(--line);border-radius:8px;font-size:12.5px;background:var(--surface);color:var(--ink);cursor:pointer;">
+        <option value="">All statuses</option>
+        <option>Fieldwork Scheduled</option>
+        <option>Fieldwork Confirmed</option>
+        <option>Fieldwork In Progress</option>
+        <option>Fieldwork Completed</option>
+        <option>Tentative</option>
+      </select>
       <div class="search">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
@@ -1366,6 +1374,7 @@ function setMode(m) {
   const lb=document.getElementById('mode-list-btn');
   const vs=document.querySelector('.view-switcher');
   const fb=document.getElementById('filter-btn');
+  const sf=document.getElementById('list-status-filter');
   if(m==='list') {
     if(sw) sw.style.display='none';
     if(lw) lw.style.display='block';
@@ -1373,6 +1382,7 @@ function setMode(m) {
     if(lb) lb.classList.add('active');
     if(vs) vs.style.visibility='hidden';
     if(fb) fb.style.display='none';
+    if(sf) sf.style.display='';
     renderList();
   } else {
     if(sw) sw.style.display='';
@@ -1381,6 +1391,7 @@ function setMode(m) {
     if(lb) lb.classList.remove('active');
     if(vs) vs.style.visibility='';
     if(fb) fb.style.display='';
+    if(sf) sf.style.display='none';
     renderCal();
   }
 }
@@ -1397,12 +1408,18 @@ function renderList() {
   const tbody=document.getElementById('list-tbody');
   if(!tbody) return;
   const q=(document.getElementById('search-input')?.value||'').toLowerCase();
+  const statusFilter=(document.getElementById('list-status-filter')?.value||'').toLowerCase();
+  // newest first — jobs without a date sink to the bottom
   const sorted=[...allJobs].sort((a,b)=>{
     const da=a.Start_x0020_Date||'';
     const db=b.Start_x0020_Date||'';
-    return da<db?-1:da>db?1:0;
+    if(!da&&!db) return 0;
+    if(!da) return 1;
+    if(!db) return -1;
+    return da>db?-1:da<db?1:0;
   });
   const filtered=sorted.filter(j=>{
+    if(statusFilter&&(j.Status||'').toLowerCase()!==statusFilter) return false;
     if(!q) return true;
     return (j.JobNumber||'').toLowerCase().includes(q)
       ||(j.Suburb||'').toLowerCase().includes(q)
@@ -1412,11 +1429,13 @@ function renderList() {
       ||((j.Crew||[]).join(' ')).toLowerCase().includes(q);
   });
   if(filtered.length===0) {
-    tbody.innerHTML=`<tr><td colspan="10" class="list-empty">${q?'No jobs match your search.':'No jobs found.'}</td></tr>`;
+    tbody.innerHTML=`<tr><td colspan="10" class="list-empty">${(q||statusFilter)?'No jobs match your search.':'No jobs found.'}</td></tr>`;
     return;
   }
+  const ROW_BG={white:'rgba(248,248,252,0.7)',yellow:'oklch(0.98 0.025 95)',green:'oklch(0.975 0.018 152)',pink:'oklch(0.978 0.014 18)',blue:'oklch(0.976 0.012 235)',orange:'oklch(0.978 0.022 55)'};
   tbody.innerHTML=filtered.map(j=>{
     const color=getColorSlug(j);
+    const rowBg=ROW_BG[color]||'';
     const status=(j.Status||'').trim();
     const sl=getStatusSlug(status);
     const badgeCls=sl==='confirmed'?'status-confirmed':sl==='tentative'?'status-tentative':sl==='cancelled'?'status-cancelled':'status-default';
@@ -1424,9 +1443,9 @@ function renderList() {
     const dateStr=j.Start_x0020_Date?formatDisplayDate(j.Start_x0020_Date.split('T')[0]):'—';
     const dateEnd=j.End_x0020_Date&&j.End_x0020_Date.split('T')[0]!==j.Start_x0020_Date?.split('T')[0]
       ?' – '+formatDisplayDate(j.End_x0020_Date.split('T')[0]):'';
-    const approved=j.ClientApproved?'✓':'';
-    const subcon=j.BookedSubcontractor?'✓':'';
-    return `<tr>
+    const approved=j.ClientApproved?'<span style="color:var(--status-confirmed);font-weight:700">✓</span>':'';
+    const subcon=j.BookedSubcontractor?'<span style="color:var(--status-confirmed);font-weight:700">✓</span>':'';
+    return `<tr style="background:${rowBg}">
       <td class="list-swatch"><div class="list-swatch-inner sw-${color}"></div></td>
       <td class="td-machine">${j.Machine||'—'}</td>
       <td class="td-jobno">${j.JobNumber||'—'}</td>
