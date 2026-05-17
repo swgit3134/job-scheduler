@@ -1519,7 +1519,8 @@ function renderCrewView() {
   }
   const today=new Date(); today.setHours(0,0,0,0);
   const jobs=allJobs.filter(j=>{
-    const crew=Array.isArray(j.Crew)?j.Crew:(j.Crew?[j.Crew]:[]);
+    const src=j.CrewText||j.Crew||'';
+    const crew=Array.isArray(src)?src:src.split(/;#|;|,/).map(c=>c.trim()).filter(Boolean);
     if(!crew.some(c=>c===name)) return false;
     const start=j.Start_x0020_Date?new Date(j.Start_x0020_Date.split('T')[0]+'T12:00:00'):null;
     return start&&start>=today;
@@ -1551,7 +1552,8 @@ function renderCrewView() {
       ?startD.toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short'})
       :startD.toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short'})
        +' – '+endD.toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short'});
-    const allCrew=Array.isArray(j.Crew)?j.Crew:(j.Crew?[j.Crew]:[]);
+    const crewSrc=j.CrewText||j.Crew||'';
+    const allCrew=Array.isArray(crewSrc)?crewSrc:crewSrc.split(/;#|;|,/).map(c=>c.trim()).filter(Boolean);
     const others=allCrew.filter(c=>c!==name);
     const status=(j.Status||'').trim();
     const sl=getStatusSlug(status);
