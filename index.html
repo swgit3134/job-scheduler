@@ -637,6 +637,64 @@ button { font:inherit; color:inherit; cursor:pointer; }
   .crew-hero { padding:14px 12px 12px; }
 }
 
+/* ---------- Admin ---------- */
+#admin-btn { display:none; }
+#admin-btn.visible { display:grid; }
+.admin-modal {
+  width:min(680px,96vw); max-height:82vh; display:flex; flex-direction:column;
+}
+.admin-tabs {
+  display:flex; gap:2px; padding:16px 22px 0; border-bottom:1px solid var(--line);
+  flex-shrink:0;
+}
+.admin-tab {
+  padding:8px 16px; border-radius:8px 8px 0 0; font-size:13px; font-weight:500;
+  color:var(--ink-3); border:0; background:transparent; cursor:pointer;
+  border-bottom:2px solid transparent; margin-bottom:-1px;
+  transition:color 120ms;
+}
+.admin-tab:hover { color:var(--ink); }
+.admin-tab.active { color:var(--accent-ink); border-bottom-color:var(--accent); font-weight:600; }
+.admin-panel {
+  flex:1; overflow-y:auto; padding:20px 22px;
+}
+.admin-section-title {
+  font-size:10.5px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase;
+  color:var(--ink-3); margin-bottom:10px;
+}
+.admin-list { display:flex; flex-direction:column; gap:6px; margin-bottom:16px; }
+.admin-list-item {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:9px 12px; background:var(--surface-2); border:1px solid var(--line);
+  border-radius:8px; font-size:13px;
+}
+.admin-list-item .item-label { color:var(--ink); font-weight:500; }
+.admin-list-item .item-meta { font-size:11.5px; color:var(--ink-3); margin-top:1px; }
+.admin-remove {
+  font-size:12px; color:oklch(0.55 0.15 28); font-weight:600; background:none;
+  border:none; cursor:pointer; padding:3px 6px; border-radius:5px;
+  transition:background 100ms;
+}
+.admin-remove:hover { background:oklch(0.94 0.04 28); }
+.admin-add-row {
+  display:flex; gap:8px; align-items:center;
+}
+.admin-add-row input, .admin-add-row select {
+  flex:1; padding:8px 11px; border:1px solid var(--line); border-radius:8px;
+  font-size:13px; background:var(--surface); color:var(--ink);
+}
+.admin-add-row input:focus, .admin-add-row select:focus {
+  outline:none; border-color:var(--accent); box-shadow:0 0 0 3px oklch(0.48 0.16 255 / 0.12);
+}
+.admin-add-btn {
+  padding:8px 16px; background:var(--accent); color:#fff; border:none;
+  border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; white-space:nowrap;
+}
+.admin-add-btn:hover { background:oklch(0.44 0.16 255); }
+.admin-empty { color:var(--ink-3); font-size:13px; padding:10px 0; }
+.cal-type-ph { color:oklch(0.45 0.15 28); font-weight:600; }
+.cal-type-cc { color:oklch(0.40 0.12 235); font-weight:600; }
+
 /* ---------- List view ---------- */
 #list-wrap {
   flex:1; overflow:auto; background:var(--bg); padding:12px 16px 16px; min-height:0; display:none;
@@ -746,6 +804,12 @@ button { font:inherit; color:inherit; cursor:pointer; }
       <div class="refresh-info">
         Last refreshed<span class="stamp" id="last-refresh">—</span>
       </div>
+      <button class="icon-btn" id="admin-btn" onclick="openAdminPanel()" title="Admin settings">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+      </button>
       <button class="icon-btn" onclick="doRefresh()" id="refresh-btn" title="Refresh">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
@@ -851,6 +915,25 @@ button { font:inherit; color:inherit; cursor:pointer; }
         <tbody id="list-tbody"></tbody>
       </table>
     </div>
+  </div>
+</div>
+
+<!-- ── ADMIN MODAL ───────────────────────────────────────────── -->
+<div class="modal-scrim" id="admin-modal-bg" onclick="bgAdminClose(event)">
+  <div class="modal admin-modal">
+    <div class="modal-head">
+      <h2>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Admin Settings
+      </h2>
+      <button class="modal-close" onclick="closeAdminPanel()">&#xd7;</button>
+    </div>
+    <div class="admin-tabs">
+      <button class="admin-tab active" id="atab-admins" onclick="switchAdminTab('admins')">Manage Admins</button>
+      <button class="admin-tab" id="atab-calendar" onclick="switchAdminTab('calendar')">Calendar</button>
+      <button class="admin-tab" id="atab-crew" onclick="switchAdminTab('crew')">Crew List</button>
+    </div>
+    <div class="admin-panel" id="admin-panel-content"></div>
   </div>
 </div>
 
@@ -1007,7 +1090,8 @@ const CLIENT_ID = 'b2580766-8f12-4e30-8180-113536a3bd5d';
 const TENANT_ID = '4ef29fa0-9468-4620-8514-1cf4538b9702';
 const SITE_URL  = 'statewidedrilling.sharepoint.com:/sites/AppsPortal:';
 const LIST_NAME = 'JobScheduler';
-const REGISTER_LIST = '02bbdf28-3c0b-49b8-affb-b91b28a5ee19'; // JobsRegister list GUID
+const ADMINS_LIST   = 'd08fb712-f4dd-4eb1-aefb-22ccfef435d8'; // SWG_Admins
+const CALENDAR_LIST = 'd29c1d34-383a-4d37-b1e1-cfc42cac6f61'; // SWG_Calendar
 
 const DAYS        = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const MONTHS      = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -1049,7 +1133,13 @@ const VIC_HOLIDAYS = {
   '2027-12-27':'Christmas Day (observed)',
   '2027-12-28':'Boxing Day (observed)',
 };
-function isHoliday(d) { return VIC_HOLIDAYS[fdate(d)]||null; }
+function isHoliday(d) {
+  const ds=fdate(d);
+  // Check dynamic calendar entries first (overrides hardcoded)
+  const cal=calendarEntries.find(e=>e.date===ds);
+  if(cal) return cal.name+(cal.type==='Company Closed'?' (Closed)':'');
+  return VIC_HOLIDAYS[ds]||null;
+}
 
 const ROW_DEFS = [
   { label:'GEOPROBE',      tiles:2, matches:['GEOPROBE V4','Geoprobe V4','geoprobe v4','GEOPROBE V3','Geoprobe V3','geoprobe v3'] },
@@ -1087,6 +1177,8 @@ const msalCfg = {
 };
 const SCOPES = ['Sites.ReadWrite.All','User.Read'];
 let msalInst=null, allJobs=[], editId=null, siteId=null, filterOn=false;
+let isAdmin=false, currentUserEmail='', crewColumnId=null;
+let calendarEntries=[]; // loaded from SWG_Calendar, merged with VIC_HOLIDAYS
 let currentView='month', viewOffset=0;
 let currentMode='grid';
 let fieldMap={};
@@ -1167,7 +1259,7 @@ async function loadFieldMap() {
       fieldMap[c.displayName.toLowerCase()]=c.name;
       if(c.displayName==='Crew'&&c.choice?.choices?.length>0) {
         CREW_LIST=c.choice.choices.filter(Boolean).sort();
-        console.log('Crew list from SP:',CREW_LIST);
+        crewColumnId=c.id;
       }
     });
   } catch(e) { console.warn('loadFieldMap:',e.message); }
@@ -1205,9 +1297,9 @@ async function onIn(acc) {
   document.getElementById('user-name').textContent=name;
   const initials=name.split(' ').map(n=>n[0]||'').join('').slice(0,2).toUpperCase()||'?';
   const av=document.getElementById('user-avatar'); if(av) av.textContent=initials;
+  currentUserEmail=(acc.username||acc.idTokenClaims?.preferred_username||'').toLowerCase();
   try { await token(); } catch(e) { console.warn('Token pre-warm:',e.message); }
-  // Wait one frame so #app is visible and has correct dimensions before first render
-  requestAnimationFrame(()=>loadFieldMap().then(()=>loadJobs()));
+  requestAnimationFrame(()=>loadFieldMap().then(()=>Promise.all([checkAdminStatus(),loadCalendarEntries()])).then(()=>loadJobs()));
 }
 
 // ── HELPERS ──────────────────────────────────────────────────────
@@ -1520,6 +1612,214 @@ function cleanupDrag() {
 function shiftView(n) { viewOffset+=n; renderCal(); }
 function shiftWeeks(n) { shiftView(n); }
 function goToday() { viewOffset=0; renderCal(); }
+// ── ADMIN ─────────────────────────────────────────────────────────
+async function checkAdminStatus() {
+  try {
+    const sid=await getSite();
+    const res=await gfetch('GET',`/sites/${sid}/lists/${ADMINS_LIST}/items?expand=fields&$top=500&$select=fields`);
+    const emails=(res.value||[]).map(i=>(i.fields?.Title||'').toLowerCase().trim());
+    isAdmin=emails.includes(currentUserEmail);
+    const btn=document.getElementById('admin-btn');
+    if(btn) btn.classList.toggle('visible',isAdmin);
+  } catch(e) { console.warn('Admin check failed:',e.message); }
+}
+
+async function loadCalendarEntries() {
+  if(!CALENDAR_LIST) return;
+  try {
+    const sid=await getSite();
+    const res=await gfetch('GET',`/sites/${sid}/lists/${CALENDAR_LIST}/items?expand=fields&$top=500`);
+    calendarEntries=(res.value||[]).map(i=>({
+      id:i.id,
+      name:i.fields?.Title||'',
+      date:(i.fields?.EventDate||i.fields?.Date||'').split('T')[0],
+      type:i.fields?.EventType||'Public Holiday'
+    })).filter(e=>e.date);
+  } catch(e) { console.warn('Calendar load failed:',e.message); }
+}
+
+let currentAdminTab='admins';
+function openAdminPanel() {
+  if(!isAdmin) return;
+  currentAdminTab='admins';
+  document.querySelectorAll('.admin-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('atab-admins').classList.add('active');
+  renderAdminTab('admins');
+  document.getElementById('admin-modal-bg').classList.add('open');
+}
+function closeAdminPanel() { document.getElementById('admin-modal-bg').classList.remove('open'); }
+function bgAdminClose(e) { if(e.target===document.getElementById('admin-modal-bg')) closeAdminPanel(); }
+function switchAdminTab(tab) {
+  currentAdminTab=tab;
+  document.querySelectorAll('.admin-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('atab-'+tab).classList.add('active');
+  renderAdminTab(tab);
+}
+function renderAdminTab(tab) {
+  if(tab==='admins') renderAdminsTab();
+  else if(tab==='calendar') renderCalendarTab();
+  else if(tab==='crew') renderCrewTab();
+}
+
+// ── Manage Admins ──
+let adminItems=[];
+async function renderAdminsTab() {
+  const el=document.getElementById('admin-panel-content');
+  el.innerHTML='<div class="admin-empty">Loading…</div>';
+  try {
+    const sid=await getSite();
+    const res=await gfetch('GET',`/sites/${sid}/lists/${ADMINS_LIST}/items?expand=fields&$top=500`);
+    adminItems=(res.value||[]).map(i=>({id:i.id,email:(i.fields?.Title||'').trim()}));
+    el.innerHTML=`
+      <div class="admin-section-title">Current Admins</div>
+      <div class="admin-list" id="admin-admin-list">
+        ${adminItems.length?adminItems.map(a=>`
+          <div class="admin-list-item">
+            <span class="item-label">${xe(a.email)}</span>
+            ${a.email.toLowerCase()===currentUserEmail?'<span style="font-size:11px;color:var(--ink-3)">(you)</span>':'<button class="admin-remove" onclick="removeAdmin(\'${a.id}\',\'${xe(a.email)}\')">✕ Remove</button>'}
+          </div>`).join(''):'<div class="admin-empty">No admins found.</div>'}
+      </div>
+      <div class="admin-section-title">Add Admin by Email</div>
+      <div class="admin-add-row">
+        <input id="new-admin-email" type="email" placeholder="user@company.com" onkeydown="if(event.key==='Enter')addAdmin()">
+        <button class="admin-add-btn" onclick="addAdmin()">Add</button>
+      </div>`;
+  } catch(e) { el.innerHTML=`<div class="admin-empty">Error: ${e.message}</div>`; }
+}
+async function addAdmin() {
+  const inp=document.getElementById('new-admin-email');
+  const email=(inp?.value||'').trim().toLowerCase();
+  if(!email||!email.includes('@')) { toast('Enter a valid email','error'); return; }
+  if(adminItems.some(a=>a.email.toLowerCase()===email)) { toast('Already an admin','error'); return; }
+  try {
+    const sid=await getSite();
+    await gfetch('POST',`/sites/${sid}/lists/${ADMINS_LIST}/items`,{fields:{Title:email}});
+    inp.value='';
+    toast('Admin added ✓');
+    renderAdminsTab();
+  } catch(e) { toast('Error: '+e.message,'error'); }
+}
+async function removeAdmin(itemId,email) {
+  if(!confirm(`Remove ${email} as admin?`)) return;
+  try {
+    const sid=await getSite();
+    await gfetch('DELETE',`/sites/${sid}/lists/${ADMINS_LIST}/items/${itemId}`);
+    toast('Removed ✓');
+    renderAdminsTab();
+  } catch(e) { toast('Error: '+e.message,'error'); }
+}
+
+// ── Manage Calendar ──
+async function renderCalendarTab() {
+  const el=document.getElementById('admin-panel-content');
+  el.innerHTML='<div class="admin-empty">Loading…</div>';
+  await loadCalendarEntries();
+  const sorted=[...calendarEntries].sort((a,b)=>a.date>b.date?1:-1);
+  el.innerHTML=`
+    <div class="admin-section-title">Public Holidays &amp; Company Closed Days</div>
+    <div class="admin-list">
+      ${sorted.length?sorted.map(e=>`
+        <div class="admin-list-item">
+          <div>
+            <div class="item-label">${xe(e.name)}</div>
+            <div class="item-meta">
+              ${formatDisplayDate(e.date)} &nbsp;·&nbsp;
+              <span class="${e.type==='Public Holiday'?'cal-type-ph':'cal-type-cc'}">${xe(e.type)}</span>
+            </div>
+          </div>
+          <button class="admin-remove" onclick="removeCalendarEntry('${e.id}')">✕ Remove</button>
+        </div>`).join(''):'<div class="admin-empty">No entries. Add below or edit via SharePoint.</div>'}
+    </div>
+    <div class="admin-section-title">Add Entry</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div class="admin-add-row">
+        <input id="cal-name" type="text" placeholder="e.g. Easter Monday">
+        <input id="cal-date" type="date" style="flex:0 0 150px">
+      </div>
+      <div class="admin-add-row">
+        <select id="cal-type">
+          <option>Public Holiday</option>
+          <option>Company Closed</option>
+        </select>
+        <button class="admin-add-btn" onclick="addCalendarEntry()">Add</button>
+      </div>
+    </div>`;
+}
+async function addCalendarEntry() {
+  const name=(document.getElementById('cal-name')?.value||'').trim();
+  const date=document.getElementById('cal-date')?.value||'';
+  const type=document.getElementById('cal-type')?.value||'Public Holiday';
+  if(!name||!date) { toast('Enter name and date','error'); return; }
+  try {
+    const sid=await getSite();
+    await gfetch('POST',`/sites/${sid}/lists/${CALENDAR_LIST}/items`,{fields:{Title:name,EventDate:date+'T00:00:00.000Z',EventType:type}});
+    toast('Entry added ✓');
+    await loadCalendarEntries();
+    renderCal();
+    renderCalendarTab();
+  } catch(e) { toast('Error: '+e.message,'error'); }
+}
+async function removeCalendarEntry(itemId) {
+  if(!confirm('Remove this entry?')) return;
+  try {
+    const sid=await getSite();
+    await gfetch('DELETE',`/sites/${sid}/lists/${CALENDAR_LIST}/items/${itemId}`);
+    toast('Removed ✓');
+    await loadCalendarEntries();
+    renderCal();
+    renderCalendarTab();
+  } catch(e) { toast('Error: '+e.message,'error'); }
+}
+
+// ── Manage Crew ──
+async function renderCrewTab() {
+  const el=document.getElementById('admin-panel-content');
+  el.innerHTML=`
+    <div class="admin-section-title">Crew Members</div>
+    <div class="admin-list">
+      ${CREW_LIST.map(name=>`
+        <div class="admin-list-item">
+          <span class="item-label">${xe(name)}</span>
+          <button class="admin-remove" onclick="removeCrewMember('${xe(name)}')">✕ Remove</button>
+        </div>`).join('')}
+    </div>
+    <div class="admin-section-title">Add Crew Member</div>
+    <div class="admin-add-row">
+      <input id="new-crew-name" type="text" placeholder="Full name" onkeydown="if(event.key==='Enter')addCrewMember()">
+      <button class="admin-add-btn" onclick="addCrewMember()">Add</button>
+    </div>`;
+}
+async function saveCrewChoices(list) {
+  if(!crewColumnId) { toast('Crew column ID not loaded — refresh and try again','error'); return false; }
+  const sid=await getSite();
+  await gfetch('PATCH',`/sites/${sid}/lists/${LIST_NAME}/columns/${crewColumnId}`,{choice:{choices:list}});
+  return true;
+}
+async function addCrewMember() {
+  const inp=document.getElementById('new-crew-name');
+  const name=(inp?.value||'').trim();
+  if(!name) { toast('Enter a name','error'); return; }
+  if(CREW_LIST.some(c=>c.toLowerCase()===name.toLowerCase())) { toast('Already in crew list','error'); return; }
+  try {
+    const updated=[...CREW_LIST,name].sort();
+    await saveCrewChoices(updated);
+    CREW_LIST=updated;
+    inp.value='';
+    toast(`${name} added ✓`);
+    renderCrewTab();
+  } catch(e) { toast('Error: '+e.message,'error'); }
+}
+async function removeCrewMember(name) {
+  if(!confirm(`Remove ${name} from crew list?`)) return;
+  try {
+    const updated=CREW_LIST.filter(c=>c!==name);
+    await saveCrewChoices(updated);
+    CREW_LIST=updated;
+    toast(`${name} removed ✓`);
+    renderCrewTab();
+  } catch(e) { toast('Error: '+e.message,'error'); }
+}
+
 function setView(v) {
   currentView=v; viewOffset=0;
   document.querySelectorAll('.view-switcher button').forEach(b=>b.classList.remove('active'));
