@@ -244,6 +244,27 @@ button { font:inherit; color:inherit; cursor:pointer; }
 .day-cell.drop-hover { background:oklch(0.96 0.04 255) !important; box-shadow:inset 0 0 0 2px var(--accent); }
 .day-cell.drop-hover-machine { background:oklch(0.96 0.05 152) !important; box-shadow:inset 0 0 0 2px var(--status-confirmed); }
 
+/* Public holidays */
+.day-head.holiday { background:oklch(0.97 0.03 28); }
+.day-head.holiday .dow { color:oklch(0.50 0.15 28); }
+.day-head.holiday .dom { color:oklch(0.40 0.16 28); }
+.day-head .ph-label {
+  font-size:9px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase;
+  color:oklch(0.50 0.15 28); margin-top:2px; white-space:nowrap; overflow:hidden;
+  text-overflow:ellipsis; max-width:100%;
+}
+.day-cell.holiday {
+  background:repeating-linear-gradient(
+    -45deg, oklch(0.97 0.025 28), oklch(0.97 0.025 28) 4px,
+    oklch(0.985 0.01 28) 4px, oklch(0.985 0.01 28) 10px
+  ) !important;
+  cursor:not-allowed;
+}
+.day-cell.holiday:hover { background:repeating-linear-gradient(
+    -45deg, oklch(0.95 0.03 28), oklch(0.95 0.03 28) 4px,
+    oklch(0.97 0.015 28) 4px, oklch(0.97 0.015 28) 10px
+  ) !important; }
+
 /* ---------- Job card ---------- */
 .job {
   position:relative; border-radius:var(--card-radius);
@@ -990,6 +1011,44 @@ const DAYS        = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const MONTHS      = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const LONG_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
+// Victorian public holidays (YYYY-MM-DD). Extend as needed.
+const VIC_HOLIDAYS = {
+  '2025-01-01':'New Year\'s Day',
+  '2025-01-27':'Australia Day',
+  '2025-03-10':'Labour Day',
+  '2025-04-18':'Good Friday',
+  '2025-04-19':'Easter Saturday',
+  '2025-04-21':'Easter Monday',
+  '2025-04-25':'ANZAC Day',
+  '2025-06-09':'King\'s Birthday',
+  '2025-11-04':'Melbourne Cup',
+  '2025-12-25':'Christmas Day',
+  '2025-12-26':'Boxing Day',
+  '2026-01-01':'New Year\'s Day',
+  '2026-01-26':'Australia Day',
+  '2026-03-09':'Labour Day',
+  '2026-04-03':'Good Friday',
+  '2026-04-04':'Easter Saturday',
+  '2026-04-06':'Easter Monday',
+  '2026-04-27':'ANZAC Day (observed)',
+  '2026-06-08':'King\'s Birthday',
+  '2026-11-03':'Melbourne Cup',
+  '2026-12-25':'Christmas Day',
+  '2026-12-28':'Boxing Day (observed)',
+  '2027-01-01':'New Year\'s Day',
+  '2027-01-26':'Australia Day',
+  '2027-03-08':'Labour Day',
+  '2027-03-26':'Good Friday',
+  '2027-03-27':'Easter Saturday',
+  '2027-03-29':'Easter Monday',
+  '2027-04-26':'ANZAC Day (observed)',
+  '2027-06-14':'King\'s Birthday',
+  '2027-11-02':'Melbourne Cup',
+  '2027-12-27':'Christmas Day (observed)',
+  '2027-12-28':'Boxing Day (observed)',
+};
+function isHoliday(d) { return VIC_HOLIDAYS[fdate(d)]||null; }
+
 const ROW_DEFS = [
   { label:'GEOPROBE',      tiles:2, matches:['GEOPROBE V4','Geoprobe V4','geoprobe v4','GEOPROBE V3','Geoprobe V3','geoprobe v3'] },
   { label:'HANJIN (TRACK)',tiles:1, matches:['HANJIN (TRUCK)','Hanjin (Truck)','HANJIN (TRACK)','Hanjin (Track)','HANJIN','Hanjin'] },
@@ -1288,8 +1347,9 @@ function renderCal() {
   h+=`<div class="corner">SCHEDULE</div>`;
   dates.forEach((d,i)=>{
     const firstOfWeek=d._weekIndex>0&&i%5===0;
-    const cls=['day-head',isToday(d)?'today':'',firstOfWeek?'week-start':''].filter(Boolean).join(' ');
-    h+=`<div class="${cls}"><div class="dow">${DAYS[d.getDay()]}</div><div class="dom">${d.getDate()}<span class="mo">${MONTHS[d.getMonth()]}</span></div></div>`;
+    const ph=isHoliday(d);
+    const cls=['day-head',isToday(d)?'today':'',firstOfWeek?'week-start':'',ph?'holiday':''].filter(Boolean).join(' ');
+    h+=`<div class="${cls}"><div class="dow">${DAYS[d.getDay()]}</div><div class="dom">${d.getDate()}<span class="mo">${MONTHS[d.getMonth()]}</span></div>${ph?`<div class="ph-label">${ph}</div>`:''}</div>`;
   });
   h+=`</div>`;
 
@@ -1319,8 +1379,9 @@ function renderCal() {
         }
         return true;
       });
-      const cc=['day-cell',isToday(d)?'today':'',firstOfWeek?'week-start':'',jobs.length===0?'empty':''].filter(Boolean).join(' ');
-      h+=`<div class="${cc}" data-machine="${xe(row.matches[0])}" data-date="${ds}">`;
+      const isph=!!isHoliday(d);
+      const cc=['day-cell',isToday(d)?'today':'',firstOfWeek?'week-start':'',jobs.length===0?'empty':'',isph?'holiday':''].filter(Boolean).join(' ');
+      h+=`<div class="${cc}" data-machine="${xe(row.matches[0])}" data-date="${ds}" ${isph?'data-holiday="1"':''}>`;
       jobs.forEach(j=>{
         const colorSlug=getColorSlug(j);
         const statusSlug=getStatusSlug(j.Status);
@@ -1351,7 +1412,7 @@ function renderCal() {
     const card=e.target.closest('.job');
     if(card) { e.stopPropagation(); if(!card.classList.contains('past')) { const id=card.dataset.jobid; if(id) openEdit(id); } return; }
     const cell=e.target.closest('.day-cell');
-    if(cell) openNew(cell.dataset.machine||'',cell.dataset.date||'');
+    if(cell&&!cell.dataset.holiday) openNew(cell.dataset.machine||'',cell.dataset.date||'');
   };
   grid.ondragstart=function(e) {
     if(isMobileView()) { e.preventDefault(); return; }
@@ -1366,7 +1427,7 @@ function renderCal() {
   };
   grid.ondragover=function(e) {
     if(!draggingJobId) return;
-    const cell=e.target.closest('.day-cell'); if(!cell) return;
+    const cell=e.target.closest('.day-cell'); if(!cell||cell.dataset.holiday) return;
     e.preventDefault(); e.dataTransfer.dropEffect='move';
     const isMachineTarget=cell.dataset.machine&&cell.dataset.machine!==draggingFromMachine;
     const hoverClass=isMachineTarget?'drop-hover-machine':'drop-hover';
@@ -1384,7 +1445,7 @@ function renderCal() {
     e.preventDefault();
     const cell=e.target.closest('.day-cell');
     document.querySelectorAll('.day-cell.drop-hover').forEach(el=>el.classList.remove('drop-hover'));
-    if(!cell||!draggingJobId||!draggingFromDate) { cleanupDrag(); return; }
+    if(!cell||!draggingJobId||!draggingFromDate||cell.dataset.holiday) { cleanupDrag(); return; }
     const toDate=cell.dataset.date;
     const toMachine=cell.dataset.machine||'';
     const machineChanging=toMachine&&toMachine!==draggingFromMachine;
