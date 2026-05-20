@@ -1220,7 +1220,12 @@ async function signIn() {
     document.getElementById('login-btn').innerHTML=`<svg viewBox="0 0 21 21" width="18" height="18"><rect x="1" y="1" width="9" height="9" fill="#f25022"/><rect x="11" y="1" width="9" height="9" fill="#7fba00"/><rect x="1" y="11" width="9" height="9" fill="#00a4ef"/><rect x="11" y="11" width="9" height="9" fill="#ffc914"/></svg> Sign in with Microsoft`;
   }
 }
-function signOut() { if(confirm('Sign out?')) { _cachedToken=null; _tokenExpiry=0; msalInst.logoutRedirect(); } }
+let _autoRefreshTimer=null;
+function startAutoRefresh() {
+  clearInterval(_autoRefreshTimer);
+  _autoRefreshTimer=setInterval(()=>{ if(allJobs.length>0) loadJobs(); },5*60*1000);
+}
+function signOut() { if(confirm('Sign out?')) { clearInterval(_autoRefreshTimer); _cachedToken=null; _tokenExpiry=0; msalInst.logoutRedirect(); } }
 function loginErr(m) { const el=document.getElementById('login-error'); el.textContent=m; el.style.display='block'; }
 let _cachedToken=null, _tokenExpiry=0;
 async function token() {
@@ -1299,7 +1304,7 @@ async function onIn(acc) {
   const av=document.getElementById('user-avatar'); if(av) av.textContent=initials;
   currentUserEmail=(acc.username||acc.idTokenClaims?.preferred_username||'').toLowerCase();
   try { await token(); } catch(e) { console.warn('Token pre-warm:',e.message); }
-  requestAnimationFrame(()=>loadFieldMap().then(()=>Promise.all([checkAdminStatus(),loadCalendarEntries()])).then(()=>loadJobs()));
+  requestAnimationFrame(()=>loadFieldMap().then(()=>Promise.all([checkAdminStatus(),loadCalendarEntries()])).then(()=>{ loadJobs(); startAutoRefresh(); }));
 }
 
 // ── HELPERS ──────────────────────────────────────────────────────
