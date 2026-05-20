@@ -1537,11 +1537,10 @@ function renderCal() {
         const suburb=xe(j.Suburb||j.Title||'');
         const jobno=xe(j.JobNumber||'');
         const noAccess=!approved?' no-access':'';
-        const copyBtn=(!isMobile&&!isPast)?`<button class="job-copy" title="Copy job" onclick="event.stopPropagation();openCopyModal('${j.id}',null)">⧉</button>`:'';
         h+=`<div class="job${isPast?' past':''}${noAccess}" data-jobid="${j.id}" data-color="${colorSlug}" data-status="${statusSlug}" ${draggable} onmouseenter="showJobPopover(event,'${j.id}')" onmouseleave="schedHidePopover()">`;
         h+=`<div class="job-head"><span class="job-no">${jobno}</span></div>`;
         h+=`<span class="job-suburb">${suburb}</span>`;
-        h+=`<span class="status-dot"></span>${copyBtn}</div>`;
+        h+=`<span class="status-dot"></span></div>`;
       });
       h+=`</div>`;
     });
@@ -1911,7 +1910,7 @@ function showJobPopover(e,jobId) {
     ${crew?`<div class="pop-row"><span class="pop-label">Crew</span><span class="pop-val">${xe(crew)}</span></div>`:''}
     <div class="pop-row"><span class="pop-label">Status</span><span class="pop-val"><span class="list-badge ${badgeCls}" style="font-size:10.5px;padding:2px 7px">${xe(status||'—')}</span></span></div>
     ${j.Notes?`<div class="pop-row"><span class="pop-label">Notes</span><span class="pop-val" style="color:var(--ink-3)">${xe(j.Notes)}</span></div>`:''}
-    ${!isPast&&!isMobileView()?`<div class="pop-actions"><button class="pop-edit-btn" onclick="closePopoverAndEdit('${j.id}')">Edit job</button></div>`:''}`;
+    ${!isPast&&!isMobileView()?`<div class="pop-actions"><button class="pop-edit-btn" onclick="closePopoverAndEdit('${j.id}')">Edit job</button><button class="pop-edit-btn" style="background:var(--surface-2);color:var(--ink-2);border:1px solid var(--line)" onclick="closePopoverAndCopy('${j.id}')">Copy job</button></div>`:''}`;
   // Position: prefer above the tile, flip below if near top edge
   const chip=e.currentTarget;
   const rect=chip.getBoundingClientRect();
@@ -1937,6 +1936,11 @@ function closePopoverAndEdit(id) {
   const pop=document.getElementById('job-popover');
   if(pop) pop.classList.remove('visible');
   openEdit(id);
+}
+function closePopoverAndCopy(id) {
+  const pop=document.getElementById('job-popover');
+  if(pop) pop.classList.remove('visible');
+  openCopyModal(id,null);
 }
 
 function setView(v) {
