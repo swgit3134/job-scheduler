@@ -2278,12 +2278,20 @@ async function saveJob() {
   const ed=document.getElementById('f-enddate').value;
   if(!sd||!ed) { toast('Please select start and end dates','error'); return; }
   const splitByDay=document.getElementById('f-split-by-day').checked;
-  if(splitByDay&&editId) { toast('Cannot split an existing job. Delete and recreate as daily entries.','error'); return; }
   const btn=document.getElementById('save-btn');
   btn.textContent='Saving…'; btn.disabled=true;
   try {
-    if(splitByDay) await createMultipleDailyJobs();
-    else await saveSingleJob();
+    if(splitByDay&&editId) {
+      // Delete the existing entry first, then create individual daily jobs
+      const sid=await getSite();
+      await gfetch('DELETE',`/sites/${sid}/lists/${LIST_NAME}/items/${editId}`);
+      editId=null;
+      await createMultipleDailyJobs();
+    } else if(splitByDay) {
+      await createMultipleDailyJobs();
+    } else {
+      await saveSingleJob();
+    }
     closeModal(); loadJobs();
   } catch(e) { toast('Error: '+e.message,'error'); }
   btn.textContent='Save'; btn.disabled=false;
