@@ -2363,10 +2363,18 @@ async function deleteJob() {
 }
 
 // ── COPY ──────────────────────────────────────────────────────────
+function nextWorkingDay(dateStr) {
+  const base=dateStr?new Date(dateStr):new Date();
+  base.setHours(0,0,0,0);
+  const step=base.getDay()===5?3:1; // Friday → +3 days (Monday), else +1
+  base.setDate(base.getDate()+step);
+  return fdate(base);
+}
 function openCopyModal(jobId,fromDate) {
   copySourceJobId=jobId;
-  let nextDate='';
-  if(fromDate) { const d=new Date(fromDate); d.setDate(d.getDate()+1); nextDate=fdate(d); }
+  const j=allJobs.find(x=>x.id===jobId);
+  const srcDate=fromDate||(j?.Start_x0020_Date?.split('T')[0])||null;
+  const nextDate=nextWorkingDay(srcDate);
   document.getElementById('copy-date-input').value=nextDate;
   document.getElementById('copy-modal-bg').classList.add('open');
   setTimeout(()=>document.getElementById('copy-date-input').focus(),200);
