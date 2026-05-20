@@ -336,7 +336,8 @@ button { font:inherit; color:inherit; cursor:pointer; }
 .job[data-color="blue"]   { --c-bg:var(--blue-bg);   --c-ink:var(--blue-ink);   --c-bar:var(--blue-bar); }
 .job[data-color="orange"] { --c-bg:var(--orange-bg); --c-ink:var(--orange-ink); --c-bar:var(--orange-bar); }
 .job-copy {
-  position:absolute; top:4px; right:4px; width:18px; height:18px;
+  position:absolute; top:50%; right:4px; transform:translateY(-50%);
+  width:18px; height:18px;
   border-radius:4px; background:rgba(255,255,255,0.85);
   border:1px solid color-mix(in oklch,var(--c-bar) 30%,transparent);
   color:var(--c-ink); display:grid; place-items:center;
@@ -1531,13 +1532,16 @@ function renderCal() {
         const colorSlug=getColorSlug(j);
         const statusSlug=getStatusSlug(j.Status);
         const isPast=isPastJob(j);
+        const approved=!!(j['Client_x0020_has_x0020_approved_']??j.ClientApproved);
         const draggable=(!isMobile&&!isPast)?'draggable="true"':'';
         const suburb=xe(j.Suburb||j.Title||'');
         const jobno=xe(j.JobNumber||'');
-        h+=`<div class="job${isPast?' past':''}" data-jobid="${j.id}" data-color="${colorSlug}" data-status="${statusSlug}" ${draggable} onmouseenter="showJobPopover(event,'${j.id}')" onmouseleave="schedHidePopover()">`;
+        const noAccess=!approved?' no-access':'';
+        const copyBtn=(!isMobile&&!isPast)?`<button class="job-copy" title="Copy job" onclick="event.stopPropagation();openCopyModal('${j.id}',null)">⧉</button>`:'';
+        h+=`<div class="job${isPast?' past':''}${noAccess}" data-jobid="${j.id}" data-color="${colorSlug}" data-status="${statusSlug}" ${draggable} onmouseenter="showJobPopover(event,'${j.id}')" onmouseleave="schedHidePopover()">`;
         h+=`<div class="job-head"><span class="job-no">${jobno}</span></div>`;
         h+=`<span class="job-suburb">${suburb}</span>`;
-        h+=`<span class="status-dot"></span></div>`;
+        h+=`<span class="status-dot"></span>${copyBtn}</div>`;
       });
       h+=`</div>`;
     });
@@ -1908,16 +1912,18 @@ function showJobPopover(e,jobId) {
     <div class="pop-row"><span class="pop-label">Status</span><span class="pop-val"><span class="list-badge ${badgeCls}" style="font-size:10.5px;padding:2px 7px">${xe(status||'—')}</span></span></div>
     ${j.Notes?`<div class="pop-row"><span class="pop-label">Notes</span><span class="pop-val" style="color:var(--ink-3)">${xe(j.Notes)}</span></div>`:''}
     ${!isPast&&!isMobileView()?`<div class="pop-actions"><button class="pop-edit-btn" onclick="closePopoverAndEdit('${j.id}')">Edit job</button></div>`:''}`;
-  // Position: prefer right of chip, flip left if near right edge
+  // Position: prefer above the tile, flip below if near top edge
   const chip=e.currentTarget;
   const rect=chip.getBoundingClientRect();
-  const popW=268, popH=240;
-  let left=rect.right+8;
-  let top=rect.top;
-  if(left+popW>window.innerWidth-12) left=rect.left-popW-8;
-  if(top+popH>window.innerHeight-12) top=window.innerHeight-popH-12;
+  const popW=268, popH=260;
+  // Horizontal: centre on tile, clamp to viewport
+  let left=rect.left+rect.width/2-popW/2;
+  left=Math.max(8,Math.min(left,window.innerWidth-popW-8));
+  // Vertical: above by default, flip below if not enough space
+  let top=rect.top-popH-8;
+  if(top<8) top=rect.bottom+8;
   pop.style.left=left+'px';
-  pop.style.top=Math.max(8,top)+'px';
+  pop.style.top=top+'px';
   pop.classList.add('visible');
 }
 function schedHidePopover() {
