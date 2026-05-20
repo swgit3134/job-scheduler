@@ -1436,13 +1436,20 @@ function renderCal() {
   const colTpl=`${labelW}px repeat(${dates.length},${colW}px)`;
 
   const headerH=44;
-  const wrapH=wrapRect.height||wrap.clientHeight||window.innerHeight-130;
   const tileWeights=machines.map(r=>r.tiles||1);
   const totalUnits=tileWeights.reduce((a,b)=>a+b,0);
-  // Fit all rows within the available height; floor to nearest px, min 36px/unit on desktop
-  const minUnit=isMobile?42:36;
-  const unitH=isMobile?minUnit:Math.max(minUnit,Math.floor((wrapH-headerH-28)/totalUnits));
-  const rowHeights=tileWeights.map(w=>w*unitH);
+  if(!isMobile) {
+    // Measure actual chrome heights for precise fit on desktop
+    const topbarH=document.querySelector('.topbar')?.offsetHeight||58;
+    const subbarH=document.querySelector('.subbar')?.offsetHeight||40;
+    const wrapPadding=28; // schedule-wrap padding top+bottom
+    const schedBorder=4;  // .schedule border + inner gap
+    const availH=window.innerHeight-topbarH-subbarH-wrapPadding-schedBorder;
+    const unitH=Math.max(38,Math.floor((availH-headerH)/totalUnits));
+    var rowHeights=tileWeights.map(w=>w*unitH);
+  } else {
+    var rowHeights=tileWeights.map(w=>w*42);
+  }
 
   let h='';
 
