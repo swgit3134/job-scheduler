@@ -232,9 +232,9 @@ button { font:inherit; color:inherit; cursor:pointer; }
 .cat-label .name { font-size:12px; font-weight:600; letter-spacing:0.01em; color:var(--ink); }
 
 .day-cell {
-  padding:5px 5px; border-right:1px solid var(--line-2);
-  display:flex; flex-direction:column; gap:var(--card-gap);
-  transition:background 100ms; min-width:0; overflow-y:visible; cursor:pointer; position:relative;
+  padding:4px 4px; border-right:1px solid var(--line-2);
+  display:flex; flex-direction:column; gap:3px;
+  transition:background 100ms; min-width:0; overflow:hidden; cursor:pointer; position:relative;
 }
 .day-cell:hover { background:oklch(0.985 0.005 250); }
 .day-cell:last-child { border-right:0; }
@@ -266,36 +266,64 @@ button { font:inherit; color:inherit; cursor:pointer; }
   ) !important; }
 
 /* ---------- Job card ---------- */
+/* Chip-style job tile — single row, fixed height */
 .job {
-  position:relative; border-radius:var(--card-radius);
-  padding:var(--card-pad-y) var(--card-pad-x); padding-left:calc(var(--card-pad-x) + 4px);
-  cursor:grab; user-select:none; overflow:hidden;
+  position:relative; border-radius:5px;
+  height:22px; display:flex; align-items:center;
+  padding:0 22px 0 10px; gap:5px;
+  cursor:grab; user-select:none; overflow:hidden; flex-shrink:0;
   background:var(--c-bg,#fff); color:var(--c-ink,var(--ink));
-  border:1px solid color-mix(in oklch,var(--c-bar,var(--line-strong)) 28%,transparent);
-  transition:transform 120ms ease,box-shadow 120ms ease;
+  border:1px solid color-mix(in oklch,var(--c-bar,var(--line-strong)) 30%,transparent);
+  transition:filter 80ms, box-shadow 80ms;
 }
 .job::before {
-  content:""; position:absolute; left:0; top:5px; bottom:5px;
-  width:3px; border-radius:0 3px 3px 0; background:var(--c-bar,var(--line-strong));
+  content:""; position:absolute; left:0; top:3px; bottom:3px;
+  width:3px; border-radius:0 2px 2px 0; background:var(--c-bar,var(--line-strong));
 }
-.job:hover {
-  transform:translateY(-1px);
-  box-shadow:0 5px 16px -8px rgba(15,20,35,0.22),0 1px 0 rgba(15,20,35,0.02);
-  border-color:color-mix(in oklch,var(--c-bar,var(--line-strong)) 50%,transparent);
-}
+.job:hover { filter:brightness(0.96); box-shadow:0 2px 8px -3px rgba(15,20,35,0.18); }
 .job:active { cursor:grabbing; }
 .job.dragging { opacity:0.35; }
-.job.past { cursor:default; opacity:0.78; filter:grayscale(15%); }
-.job.past:hover { transform:none; box-shadow:none; border-color:color-mix(in oklch,var(--c-bar,var(--line-strong)) 20%,transparent); }
+.job.past { cursor:default; opacity:0.72; filter:grayscale(18%); }
+.job.past:hover { filter:grayscale(18%) brightness(0.96); box-shadow:none; }
 .job.past .job-copy { display:none !important; }
-.job.past::after { content:""; position:absolute; top:5px; right:7px; width:7px; height:7px; border-radius:999px; background:var(--line-strong); opacity:0.5; }
-.job .job-head { display:flex; align-items:baseline; gap:3px; margin-bottom:0; flex-wrap:wrap; }
-.job .job-no { font-family:var(--font-mono); font-size:10.5px; font-weight:700; color:var(--c-ink); opacity:0.92; letter-spacing:-0.01em; white-space:nowrap; }
-.job .job-suburb { font-size:10px; font-weight:400; line-height:1.2; color:var(--c-ink); opacity:0.70; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+.job .job-head { display:contents; }
+.job .job-no { font-family:var(--font-mono); font-size:10px; font-weight:700; color:var(--c-ink); letter-spacing:-0.01em; white-space:nowrap; flex-shrink:0; }
+.job .job-suburb { font-size:10px; font-weight:400; color:var(--c-ink); opacity:0.72; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; flex:1; }
 .job.no-access .job-suburb, .job.no-access .job-no { color:oklch(0.50 0.20 25); }
-.job .job-people { font-size:9.5px; color:color-mix(in oklch,var(--c-ink) 65%,transparent); font-weight:500; margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.job .job-people { display:none; }
 .job .person-dot { display:none; }
-.job .status-dot { position:absolute; top:5px; right:5px; width:5px; height:5px; border-radius:999px; }
+.job .status-dot { position:absolute; top:50%; right:6px; transform:translateY(-50%); width:5px; height:5px; border-radius:999px; flex-shrink:0; }
+
+/* Overflow indicator */
+.cell-overflow {
+  font-size:9px; font-weight:700; color:var(--ink-3); padding:1px 4px;
+  background:var(--surface-2); border-radius:4px; text-align:center;
+  letter-spacing:0.04em; cursor:default; flex-shrink:0; align-self:center;
+}
+
+/* Job detail popover */
+#job-popover {
+  position:fixed; z-index:9999; pointer-events:none;
+  background:var(--surface); border:1px solid var(--line);
+  border-radius:12px; padding:14px 16px; width:260px;
+  box-shadow:0 8px 32px -8px rgba(15,20,35,0.22),0 2px 8px -2px rgba(15,20,35,0.10);
+  opacity:0; transform:scale(0.96) translateY(4px);
+  transition:opacity 120ms, transform 120ms;
+}
+#job-popover.visible { opacity:1; transform:scale(1) translateY(0); pointer-events:auto; }
+.pop-color-bar { height:3px; border-radius:2px; margin-bottom:10px; }
+.pop-jobno { font-family:var(--font-mono); font-size:13px; font-weight:700; color:var(--ink); }
+.pop-suburb { font-size:14px; font-weight:600; color:var(--ink); margin-top:2px; }
+.pop-row { display:flex; gap:6px; align-items:baseline; margin-top:6px; font-size:12px; }
+.pop-label { font-size:10px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-3); min-width:54px; flex-shrink:0; }
+.pop-val { color:var(--ink-2); }
+.pop-divider { height:1px; background:var(--line-2); margin:8px 0; }
+.pop-actions { display:flex; gap:8px; margin-top:10px; }
+.pop-edit-btn {
+  flex:1; padding:7px; background:var(--accent); color:#fff; border:none;
+  border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; text-align:center;
+}
+.pop-edit-btn:hover { background:oklch(0.44 0.16 255); }
 .job[data-status="confirmed"] .status-dot { background:var(--status-confirmed); }
 .job[data-status="in-progress"] .status-dot { background:var(--status-progress); box-shadow:0 0 0 3px color-mix(in oklch,var(--status-progress) 22%,transparent); }
 .job[data-status="tentative"] .status-dot { border:1.5px dashed color-mix(in oklch,var(--status-tentative) 70%,transparent); }
@@ -917,6 +945,9 @@ button { font:inherit; color:inherit; cursor:pointer; }
   </div>
 </div>
 
+<!-- ── JOB POPOVER ──────────────────────────────────────────── -->
+<div id="job-popover" onmouseenter="cancelHidePopover()" onmouseleave="schedHidePopover()"></div>
+
 <!-- ── ADMIN MODAL ───────────────────────────────────────────── -->
 <div class="modal-scrim" id="admin-modal-bg" onclick="bgAdminClose(event)">
   <div class="modal admin-modal">
@@ -1493,23 +1524,24 @@ function renderCal() {
       const isph=!!isHoliday(d);
       const cc=['day-cell',isToday(d)?'today':'',firstOfWeek?'week-start':'',jobs.length===0?'empty':'',isph?'holiday':''].filter(Boolean).join(' ');
       h+=`<div class="${cc}" data-machine="${xe(row.matches[0])}" data-date="${ds}" ${isph?'data-holiday="1"':''}>`;
-      jobs.forEach(j=>{
+      // Calculate how many chips fit in this row's allocated height
+      const chipH=22, chipGap=3, cellPad=8;
+      const maxChips=Math.max(1,Math.floor((rowH-cellPad)/(chipH+chipGap)));
+      const visible=jobs.slice(0,maxChips);
+      const overflow=jobs.length-visible.length;
+      visible.forEach(j=>{
         const colorSlug=getColorSlug(j);
         const statusSlug=getStatusSlug(j.Status);
-        const clientOk=j['Client_x0020_has_x0020_approved_'];
-        const isMultiDay=j.End_x0020_Date&&j.Start_x0020_Date&&j.End_x0020_Date!==j.Start_x0020_Date;
         const isPast=isPastJob(j);
-        const copyBtn=(!isMobile&&!isPast)?`<button class="job-copy" onclick="event.stopPropagation();openCopyModal('${j.id}','${ds}')" title="Copy to new date">&#x1f4cb;</button>`:'';
-        const crew=j.CrewText||(Array.isArray(j.Crew)?j.Crew.join(', '):(j.Crew+'').replace(/;#/g,', ').trim())||'';
-        const crewHtml=crew&&crew!=='undefined'?`<div class="job-people"><span class="person-dot"></span>${xe(crew)}</div>`:'';
         const draggable=(!isMobile&&!isPast)?'draggable="true"':'';
-        h+=`<div class="job${clientOk?'':' no-access'}${isMultiDay?' multi-day':''}${isPast?' past':''}" data-jobid="${j.id}" data-color="${colorSlug}" data-status="${statusSlug}" ${draggable}>`;
-        h+=`<div class="job-head"><span class="job-no">${xe(j.JobNumber||'')}</span></div>`;
-        h+=`<div class="job-suburb">${xe(j.Suburb||j.Title||'')}</div>`;
-        h+=crewHtml;
-        h+=copyBtn;
+        const suburb=xe(j.Suburb||j.Title||'');
+        const jobno=xe(j.JobNumber||'');
+        h+=`<div class="job${isPast?' past':''}" data-jobid="${j.id}" data-color="${colorSlug}" data-status="${statusSlug}" ${draggable} onmouseenter="showJobPopover(event,'${j.id}')" onmouseleave="schedHidePopover()">`;
+        h+=`<div class="job-head"><span class="job-no">${jobno}</span></div>`;
+        h+=`<span class="job-suburb">${suburb}</span>`;
         h+=`<span class="status-dot"></span></div>`;
       });
+      if(overflow>0) h+=`<div class="cell-overflow">+${overflow} more</div>`;
       h+=`</div>`;
     });
     h+=`</div>`;
@@ -1850,6 +1882,58 @@ async function removeCrewMember(name) {
     toast(`${name} removed ✓`);
     renderCrewTab();
   } catch(e) { toast('Error: '+e.message,'error'); }
+}
+
+// ── JOB POPOVER ──────────────────────────────────────────────────
+let _popHideTimer=null;
+function showJobPopover(e,jobId) {
+  cancelHidePopover();
+  const j=allJobs.find(x=>x.id===jobId); if(!j) return;
+  const pop=document.getElementById('job-popover'); if(!pop) return;
+  const color=getColorSlug(j);
+  const status=(j.Status||'').trim();
+  const sl=getStatusSlug(status);
+  const badgeCls=sl==='confirmed'?'status-confirmed':sl==='tentative'?'status-tentative':'status-default';
+  const crew=(j.CrewText||(Array.isArray(j.Crew)?j.Crew.join(', '):(j.Crew||''))||'').replace(/;#/g,', ').trim();
+  const startStr=j.Start_x0020_Date?formatDisplayDate(j.Start_x0020_Date.split('T')[0]):'—';
+  const endStr=j.End_x0020_Date?formatDisplayDate(j.End_x0020_Date.split('T')[0]):'';
+  const dateRange=endStr&&endStr!==startStr?`${startStr} – ${endStr}`:startStr;
+  const isPast=isPastJob(j);
+  const barColors={white:'var(--white-bar)',yellow:'var(--yellow-bar)',green:'var(--green-bar)',pink:'var(--pink-bar)',blue:'var(--blue-bar)',orange:'var(--orange-bar)'};
+  pop.innerHTML=`
+    <div class="pop-color-bar" style="background:${barColors[color]||'var(--line-strong)'}"></div>
+    <div class="pop-jobno">${xe(j.JobNumber||'—')}</div>
+    <div class="pop-suburb">${xe(j.Suburb||j.Title||'—')}</div>
+    <div class="pop-divider"></div>
+    <div class="pop-row"><span class="pop-label">Date</span><span class="pop-val">${dateRange}</span></div>
+    <div class="pop-row"><span class="pop-label">Machine</span><span class="pop-val">${xe(j.Machine||'—')}</span></div>
+    ${crew?`<div class="pop-row"><span class="pop-label">Crew</span><span class="pop-val">${xe(crew)}</span></div>`:''}
+    <div class="pop-row"><span class="pop-label">Status</span><span class="pop-val"><span class="list-badge ${badgeCls}" style="font-size:10.5px;padding:2px 7px">${xe(status||'—')}</span></span></div>
+    ${j.Notes?`<div class="pop-row"><span class="pop-label">Notes</span><span class="pop-val" style="color:var(--ink-3)">${xe(j.Notes)}</span></div>`:''}
+    ${!isPast&&!isMobileView()?`<div class="pop-actions"><button class="pop-edit-btn" onclick="closePopoverAndEdit('${j.id}')">Edit job</button></div>`:''}`;
+  // Position: prefer right of chip, flip left if near right edge
+  const chip=e.currentTarget;
+  const rect=chip.getBoundingClientRect();
+  const popW=268, popH=240;
+  let left=rect.right+8;
+  let top=rect.top;
+  if(left+popW>window.innerWidth-12) left=rect.left-popW-8;
+  if(top+popH>window.innerHeight-12) top=window.innerHeight-popH-12;
+  pop.style.left=left+'px';
+  pop.style.top=Math.max(8,top)+'px';
+  pop.classList.add('visible');
+}
+function schedHidePopover() {
+  _popHideTimer=setTimeout(()=>{
+    const pop=document.getElementById('job-popover');
+    if(pop) pop.classList.remove('visible');
+  },180);
+}
+function cancelHidePopover() { clearTimeout(_popHideTimer); }
+function closePopoverAndEdit(id) {
+  const pop=document.getElementById('job-popover');
+  if(pop) pop.classList.remove('visible');
+  openEdit(id);
 }
 
 function setView(v) {
