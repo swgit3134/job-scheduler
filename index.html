@@ -234,7 +234,7 @@ button { font:inherit; color:inherit; cursor:pointer; }
 .day-cell {
   padding:4px 4px; border-right:1px solid var(--line-2);
   display:flex; flex-direction:column; gap:3px;
-  transition:background 100ms; min-width:0; overflow:hidden; cursor:pointer; position:relative;
+  transition:background 100ms; min-width:0; overflow:visible; cursor:pointer; position:relative;
 }
 .day-cell:hover { background:oklch(0.985 0.005 250); }
 .day-cell:last-child { border-right:0; }
@@ -1524,11 +1524,9 @@ function renderCal() {
       const isph=!!isHoliday(d);
       const cc=['day-cell',isToday(d)?'today':'',firstOfWeek?'week-start':'',jobs.length===0?'empty':'',isph?'holiday':''].filter(Boolean).join(' ');
       h+=`<div class="${cc}" data-machine="${xe(row.matches[0])}" data-date="${ds}" ${isph?'data-holiday="1"':''}>`;
-      // Calculate how many tiles fit in this row's allocated height
-      const chipH=36, chipGap=3, cellPad=8;
-      const maxChips=Math.max(1,Math.floor((rowH-cellPad)/(chipH+chipGap)));
-      const visible=jobs.slice(0,maxChips);
-      const overflow=jobs.length-visible.length;
+      // Show all jobs — no cap
+      const visible=jobs;
+      const overflow=0;
       visible.forEach(j=>{
         const colorSlug=getColorSlug(j);
         const statusSlug=getStatusSlug(j.Status);
@@ -1541,7 +1539,6 @@ function renderCal() {
         h+=`<span class="job-suburb">${suburb}</span>`;
         h+=`<span class="status-dot"></span></div>`;
       });
-      if(overflow>0) h+=`<div class="cell-overflow">+${overflow} more</div>`;
       h+=`</div>`;
     });
     h+=`</div>`;
