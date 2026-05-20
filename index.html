@@ -266,11 +266,11 @@ button { font:inherit; color:inherit; cursor:pointer; }
   ) !important; }
 
 /* ---------- Job card ---------- */
-/* Chip-style job tile — single row, fixed height */
+/* Two-line job tile */
 .job {
   position:relative; border-radius:5px;
-  height:22px; display:flex; align-items:center;
-  padding:0 22px 0 10px; gap:5px;
+  height:36px; display:flex; flex-direction:column; justify-content:center;
+  padding:0 20px 0 10px; gap:1px;
   cursor:grab; user-select:none; overflow:hidden; flex-shrink:0;
   background:var(--c-bg,#fff); color:var(--c-ink,var(--ink));
   border:1px solid color-mix(in oklch,var(--c-bar,var(--line-strong)) 30%,transparent);
@@ -286,13 +286,13 @@ button { font:inherit; color:inherit; cursor:pointer; }
 .job.past { cursor:default; opacity:0.72; filter:grayscale(18%); }
 .job.past:hover { filter:grayscale(18%) brightness(0.96); box-shadow:none; }
 .job.past .job-copy { display:none !important; }
-.job .job-head { display:contents; }
+.job .job-head { display:flex; align-items:center; gap:4px; min-width:0; }
 .job .job-no { font-family:var(--font-mono); font-size:10px; font-weight:700; color:var(--c-ink); letter-spacing:-0.01em; white-space:nowrap; flex-shrink:0; }
-.job .job-suburb { font-size:10px; font-weight:400; color:var(--c-ink); opacity:0.72; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; flex:1; }
+.job .job-suburb { font-size:9.5px; font-weight:400; color:var(--c-ink); opacity:0.72; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; line-height:1.2; }
 .job.no-access .job-suburb, .job.no-access .job-no { color:oklch(0.50 0.20 25); }
 .job .job-people { display:none; }
 .job .person-dot { display:none; }
-.job .status-dot { position:absolute; top:50%; right:6px; transform:translateY(-50%); width:5px; height:5px; border-radius:999px; flex-shrink:0; }
+.job .status-dot { position:absolute; top:6px; right:6px; width:5px; height:5px; border-radius:999px; flex-shrink:0; }
 
 /* Overflow indicator */
 .cell-overflow {
@@ -560,8 +560,8 @@ button { font:inherit; color:inherit; cursor:pointer; }
   .day-head.today::after { font-size:7px; padding:1px 3px; top:4px; right:2px; }
   .day-cell { padding:2px 2px; gap:2px; }
   .job { padding:3px 5px; padding-left:7px; border-radius:4px; }
-  .job .job-no { font-size:9.5px; }
-  .job .job-suburb { font-size:9px; }
+  .job .job-no { font-size:9px; }
+  .job .job-suburb { font-size:8.5px; }
   .job .job-people { font-size:8.5px; }
   .job-copy { display:none; }
   .modal { max-width:calc(100vw - 16px); border-radius:12px; }
@@ -1173,12 +1173,12 @@ function isHoliday(d) {
 }
 
 const ROW_DEFS = [
-  { label:'GEOPROBE',      tiles:2, matches:['GEOPROBE V4','Geoprobe V4','geoprobe v4','GEOPROBE V3','Geoprobe V3','geoprobe v3'] },
+  { label:'GEOPROBE',      tiles:4, matches:['GEOPROBE V4','Geoprobe V4','geoprobe v4','GEOPROBE V3','Geoprobe V3','geoprobe v3'] },
   { label:'HANJIN (TRACK)',tiles:1, matches:['HANJIN (TRUCK)','Hanjin (Truck)','HANJIN (TRACK)','Hanjin (Track)','HANJIN','Hanjin'] },
   { label:'COM 305',       tiles:1, matches:['COM 305','Com 305'] },
   { label:'E/PROBE',       tiles:4, matches:['E/PROBE','E/Probe','e/probe'] },
   { label:'DINGO',         tiles:3, matches:['DINGO(RED)','Dingo(Red)','Dingo (Red)','DINGO(BLUE)','Dingo(Blue)','Dingo (Blue)','DINGO','Dingo'] },
-  { label:'YARD / LEAVE',  tiles:1, matches:['YARD/LEAVE','Yard/Leave','Yard / Leave','yard / leave'] },
+  { label:'YARD / LEAVE',  tiles:2, matches:['YARD/LEAVE','Yard/Leave','Yard / Leave','yard / leave'] },
   { label:'TBC / SI',      tiles:3, matches:['TBC/SI','TBC','tbc','Site Inspection','site inspection'] },
 ];
 
@@ -1479,7 +1479,7 @@ function renderCal() {
     const unitH=Math.max(38,Math.floor((availH-headerH)/totalUnits));
     var rowHeights=tileWeights.map(w=>w*unitH);
   } else {
-    var rowHeights=tileWeights.map(w=>w*42);
+    var rowHeights=tileWeights.map(w=>w*52);
   }
 
   let h='';
@@ -1524,8 +1524,8 @@ function renderCal() {
       const isph=!!isHoliday(d);
       const cc=['day-cell',isToday(d)?'today':'',firstOfWeek?'week-start':'',jobs.length===0?'empty':'',isph?'holiday':''].filter(Boolean).join(' ');
       h+=`<div class="${cc}" data-machine="${xe(row.matches[0])}" data-date="${ds}" ${isph?'data-holiday="1"':''}>`;
-      // Calculate how many chips fit in this row's allocated height
-      const chipH=22, chipGap=3, cellPad=8;
+      // Calculate how many tiles fit in this row's allocated height
+      const chipH=36, chipGap=3, cellPad=8;
       const maxChips=Math.max(1,Math.floor((rowH-cellPad)/(chipH+chipGap)));
       const visible=jobs.slice(0,maxChips);
       const overflow=jobs.length-visible.length;
