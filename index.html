@@ -1910,7 +1910,8 @@ function showJobPopover(e,jobId) {
     ${crew?`<div class="pop-row"><span class="pop-label">Crew</span><span class="pop-val">${xe(crew)}</span></div>`:''}
     <div class="pop-row"><span class="pop-label">Status</span><span class="pop-val"><span class="list-badge ${badgeCls}" style="font-size:10.5px;padding:2px 7px">${xe(status||'—')}</span></span></div>
     ${j.Notes?`<div class="pop-row"><span class="pop-label">Notes</span><span class="pop-val" style="color:var(--ink-3)">${xe(j.Notes)}</span></div>`:''}
-    ${!isPast&&!isMobileView()?`<div class="pop-actions"><button class="pop-edit-btn" onclick="closePopoverAndEdit('${j.id}')">Edit job</button><button class="pop-edit-btn" style="background:var(--surface-2);color:var(--ink-2);border:1px solid var(--line)" onclick="closePopoverAndCopy('${j.id}')">Copy job</button></div>`:''}`;
+    ${!isMobileView()?`<div class="pop-actions">${!isPast?`<button class="pop-edit-btn" onclick="closePopoverAndEdit('${j.id}')">Edit job</button>`:''}<button class="pop-edit-btn" style="background:var(--surface-2);color:var(--ink-2);border:1px solid var(--line)" onclick="closePopoverAndCopy('${j.id}')">Copy job</button></div>`:''}`;
+
   // Position: prefer above the tile, flip below if near top edge
   const chip=e.currentTarget;
   const rect=chip.getBoundingClientRect();
