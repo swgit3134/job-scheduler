@@ -594,7 +594,7 @@ button { font:inherit; color:inherit; cursor:pointer; }
 
 /* ---------- Crew view ---------- */
 #crew-wrap {
-  flex:1; overflow:auto; background:var(--bg); display:none; flex-direction:column;
+  flex:1; overflow:auto; background:var(--bg); flex-direction:column;
 }
 .crew-person-label {
   display:flex; flex-direction:column; align-items:center; justify-content:center;
@@ -855,7 +855,7 @@ button { font:inherit; color:inherit; cursor:pointer; }
   </div>
 
   <!-- Schedule -->
-  <div class="schedule-wrap" id="schedule-wrap">
+  <div class="schedule-wrap" id="schedule-wrap" style="display:block">
     <div class="schedule">
       <div class="schedule-grid" id="cal-grid"></div>
     </div>
@@ -1920,21 +1920,21 @@ function setMode(m) {
   if(m==='list') {
     if(lw) lw.style.display='block';
     if(lb) lb.classList.add('active');
-    if(sf) sf.style.display='';
-    if(si) si.parentElement.style.display='';
+    if(sf) sf.style.display='block';
+    if(si) si.parentElement.style.display='flex';
     renderList();
   } else if(m==='crew') {
-    if(cw) cw.style.display='';
+    if(cw) cw.style.display='block';
     if(cb) cb.classList.add('active');
-    if(vs) vs.style.visibility='';
-    if(si) si.parentElement.style.display='';
+    if(vs) vs.style.visibility='visible';
+    if(si) si.parentElement.style.display='flex';
     renderCrewGrid();
   } else {
-    if(sw) sw.style.display='';
+    if(sw) sw.style.display='block';
     if(gb) gb.classList.add('active');
-    if(vs) vs.style.visibility='';
-    if(fb) fb.style.display='';
-    if(si) si.parentElement.style.display='';
+    if(vs) vs.style.visibility='visible';
+    if(fb) fb.style.display='flex';
+    if(si) si.parentElement.style.display='flex';
     renderCal();
   }
 }
