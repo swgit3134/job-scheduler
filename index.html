@@ -2099,13 +2099,43 @@ function renderCrewGrid() {
   const minCol=isMobile?46:currentView==='day'?Math.max(120,availColW):90;
   const colW=Math.max(minCol,Math.floor(availColW/dates.length));
   const colTpl=`${labelW}px repeat(${dates.length},${colW}px)`;
-  const rowH=80;
 
   const searchTerm=(document.getElementById('search-input')?.value||'').toLowerCase().trim();
 
-  let h='';
-
   const visibleCrew=CREW_LIST.filter(n=>!hiddenCrew.has(n));
+
+  // Per-row: find max jobs on any single day → determines row height
+  const chipH=48, chipGap=3, cellPad=8, headerH=44;
+  function crewJobsOnDate(person,d) {
+    return allJobs.filter(j=>{
+      if(!jobOnDate(j,d)) return false;
+      const src=j.CrewText||j.Crew||'';
+      const crew=Array.isArray(src)?src:src.split(/;#|;|,/).map(c=>c.trim()).filter(Boolean);
+      if(!crew.some(c=>c===person)) return false;
+      if(searchTerm){const jn=(j.JobNumber||'').toLowerCase(),sub=(j.Suburb||'').toLowerCase(),ct=(j.CrewText||'').toLowerCase();return jn.includes(searchTerm)||sub.includes(searchTerm)||ct.includes(searchTerm);}
+      return true;
+    }).length;
+  }
+  const rowWeights=visibleCrew.map(person=>{
+    const maxJobs=Math.max(0,...dates.map(d=>crewJobsOnDate(person,d)));
+    return Math.max(1, maxJobs); // weight = max jobs (min 1 for empty rows)
+  });
+  const totalWeight=rowWeights.reduce((a,b)=>a+b,0)||1;
+
+  // Fit rows to available viewport height
+  let rowHeights;
+  if(!isMobile) {
+    const topbarH=document.querySelector('.topbar')?.offsetHeight||58;
+    const subbarH=document.querySelector('.subbar')?.offsetHeight||40;
+    const wrapPad=28, schedBorder=4;
+    const availH=window.innerHeight-topbarH-subbarH-wrapPad-schedBorder;
+    const unitH=Math.max(chipH+cellPad, Math.floor((availH-headerH)/totalWeight));
+    rowHeights=rowWeights.map(w=>w*unitH);
+  } else {
+    rowHeights=rowWeights.map(w=>Math.max(56, w*(chipH+cellPad+chipGap)));
+  }
+
+  let h='';
   const hasHidden=hiddenCrew.size>0;
   const hiddenCount=hiddenCrew.size;
   h+=`<div class="day-header-row" style="grid-template-columns:${colTpl}">`;
@@ -2124,7 +2154,8 @@ function renderCrewGrid() {
   h+=`</div>`;
 
   // One row per visible crew member
-  visibleCrew.forEach(person=>{
+  visibleCrew.forEach((person,rowIdx)=>{
+    const rowH=rowHeights[rowIdx];
     const hue=nameHue(person);
     const initials=nameInitials(person);
     h+=`<div class="cat-row" data-person="${xe(person)}" style="grid-template-columns:${colTpl};min-height:${rowH}px" draggable="true">`;
