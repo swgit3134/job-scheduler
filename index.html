@@ -595,8 +595,10 @@ button { font:inherit; color:inherit; cursor:pointer; }
 
 /* ---------- Crew view ---------- */
 #crew-wrap {
-  flex:1; overflow:auto; background:var(--bg); flex-direction:column;
+  flex:1; overflow:hidden; background:var(--bg); flex-direction:column;
 }
+#crew-grid { overflow:hidden; }
+#crew-grid .day-cell { overflow:hidden; }
 .crew-person-label {
   display:flex; flex-direction:column; align-items:center; justify-content:center;
   gap:5px; padding:6px 4px; height:100%; box-sizing:border-box;
@@ -2104,36 +2106,18 @@ function renderCrewGrid() {
 
   const visibleCrew=CREW_LIST.filter(n=>!hiddenCrew.has(n));
 
-  // Per-row: find max jobs on any single day → determines row height
-  const chipH=48, chipGap=3, cellPad=8, headerH=44;
-  function crewJobsOnDate(person,d) {
-    return allJobs.filter(j=>{
-      if(!jobOnDate(j,d)) return false;
-      const src=j.CrewText||j.Crew||'';
-      const crew=Array.isArray(src)?src:src.split(/;#|;|,/).map(c=>c.trim()).filter(Boolean);
-      if(!crew.some(c=>c===person)) return false;
-      if(searchTerm){const jn=(j.JobNumber||'').toLowerCase(),sub=(j.Suburb||'').toLowerCase(),ct=(j.CrewText||'').toLowerCase();return jn.includes(searchTerm)||sub.includes(searchTerm)||ct.includes(searchTerm);}
-      return true;
-    }).length;
-  }
-  const rowWeights=visibleCrew.map(person=>{
-    const maxJobs=Math.max(0,...dates.map(d=>crewJobsOnDate(person,d)));
-    return Math.max(1, maxJobs); // weight = max jobs (min 1 for empty rows)
-  });
-  const totalWeight=rowWeights.reduce((a,b)=>a+b,0)||1;
+  const chipH=48, chipGap=3, cellPad=6, headerH=44;
 
-  // Fit rows to available viewport height
-  let rowHeights;
-  if(!isMobile) {
-    const topbarH=document.querySelector('.topbar')?.offsetHeight||58;
-    const subbarH=document.querySelector('.subbar')?.offsetHeight||40;
-    const wrapPad=28, schedBorder=4;
-    const availH=window.innerHeight-topbarH-subbarH-wrapPad-schedBorder;
-    const unitH=Math.max(chipH+cellPad, Math.floor((availH-headerH)/totalWeight));
-    rowHeights=rowWeights.map(w=>w*unitH);
-  } else {
-    rowHeights=rowWeights.map(w=>Math.max(56, w*(chipH+cellPad+chipGap)));
-  }
+  // Equal fixed row heights that together exactly fill the viewport
+  const topbarH=document.querySelector('.topbar')?.offsetHeight||58;
+  const subbarH=document.querySelector('.subbar')?.offsetHeight||40;
+  const wrapPad=isMobile?14:28, schedBorder=4;
+  const availH=window.innerHeight-topbarH-subbarH-wrapPad-schedBorder;
+  const numRows=visibleCrew.length||1;
+  // Each row gets an equal share; minimum enough for one chip + padding
+  const rowH=isMobile
+    ? Math.max(chipH+cellPad+4, Math.floor((availH-headerH)/numRows))
+    : Math.max(chipH+cellPad+4, Math.floor((availH-headerH)/numRows));
 
   let h='';
   const hasHidden=hiddenCrew.size>0;
@@ -2154,11 +2138,12 @@ function renderCrewGrid() {
   h+=`</div>`;
 
   // One row per visible crew member
-  visibleCrew.forEach((person,rowIdx)=>{
-    const rowH=rowHeights[rowIdx];
+  visibleCrew.forEach((person)=>{
     const hue=nameHue(person);
     const initials=nameInitials(person);
-    h+=`<div class="cat-row" data-person="${xe(person)}" style="grid-template-columns:${colTpl};min-height:${rowH}px" draggable="true">`;
+    // max chips that fit in fixed row height
+    const maxChips=Math.max(1,Math.floor((rowH-cellPad)/(chipH+chipGap)));
+    h+=`<div class="cat-row" data-person="${xe(person)}" style="grid-template-columns:${colTpl};height:${rowH}px;overflow:hidden" draggable="true">`;
     h+=`<div class="cat-label" style="padding:0"><div class="crew-person-label">
       <div class="crew-drag-handle" title="Drag to reorder">
         <svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor"><circle cx="3" cy="2.5" r="1.3"/><circle cx="7" cy="2.5" r="1.3"/><circle cx="3" cy="7" r="1.3"/><circle cx="7" cy="7" r="1.3"/><circle cx="3" cy="11.5" r="1.3"/><circle cx="7" cy="11.5" r="1.3"/></svg>
@@ -2186,7 +2171,9 @@ function renderCrewGrid() {
       const isph=!!isHoliday(d);
       const cc=['day-cell',isToday(d)?'today':'',firstOfWeek?'week-start':'',jobs.length===0?'empty':'',isph?'holiday':''].filter(Boolean).join(' ');
       h+=`<div class="${cc}" data-date="${ds}" ${isph?'data-holiday="1"':''}>`;
-      jobs.forEach(j=>{
+      const visible=jobs.slice(0,maxChips);
+      const overflow=jobs.length-visible.length;
+      visible.forEach(j=>{
         const colorSlug=getColorSlug(j);
         const statusSlug=getStatusSlug(j.Status);
         const approved=!!(j['Client_x0020_has_x0020_approved_']??j.ClientApproved);
@@ -2200,6 +2187,7 @@ function renderCrewGrid() {
         h+=`${machine?`<span class="job-machine">${machine}</span>`:''}`;
         h+=`<span class="status-dot"></span></div>`;
       });
+      if(overflow>0) h+=`<div class="cell-overflow">+${overflow}</div>`;
       h+=`</div>`;
     });
     h+=`</div>`;
