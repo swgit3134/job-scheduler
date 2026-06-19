@@ -595,25 +595,16 @@ button { font:inherit; color:inherit; cursor:pointer; }
 
 /* ---------- Crew view ---------- */
 #crew-wrap {
-  flex:1; overflow:hidden; background:var(--bg); flex-direction:column;
+  flex:1; overflow:auto; background:var(--bg); flex-direction:column;
 }
-#crew-grid { overflow:hidden; }
-#crew-grid .day-cell { overflow:hidden; }
+#crew-grid { overflow:visible; }
 .crew-person-label {
-  display:flex; flex-direction:column; align-items:center; justify-content:center;
-  gap:5px; padding:6px 4px; height:100%; box-sizing:border-box;
-}
-.person-avatar {
-  width:30px; height:30px; border-radius:50%;
-  background:oklch(0.72 0.15 var(--person-hue,250));
-  color:#fff; font-size:10px; font-weight:700; letter-spacing:0.02em;
-  display:flex; align-items:center; justify-content:center;
-  flex-shrink:0; user-select:none;
-  box-shadow:0 1px 3px oklch(0 0 0 / 0.18);
+  display:flex; flex-direction:row; align-items:center; justify-content:flex-start;
+  gap:6px; padding:6px 8px; height:100%; box-sizing:border-box;
 }
 .crew-person-name {
-  font-size:10px; font-weight:600; color:var(--ink-2); text-align:center;
-  line-height:1.2; word-break:break-word; max-width:100%;
+  font-size:11px; font-weight:700; color:var(--ink); line-height:1.2;
+  word-break:break-word;
 }
 .crew-drag-handle {
   color:var(--ink-3); opacity:0.4; cursor:grab; padding:2px; flex-shrink:0;
@@ -2124,18 +2115,22 @@ function renderCrewGrid() {
 
   const visibleCrew=CREW_LIST.filter(n=>!hiddenCrew.has(n));
 
-  const chipH=48, chipGap=3, cellPad=6, headerH=44;
+  const chipH=48, chipGap=3, cellPad=6;
 
-  // Equal fixed row heights that together exactly fill the viewport
-  const topbarH=document.querySelector('.topbar')?.offsetHeight||58;
-  const subbarH=document.querySelector('.subbar')?.offsetHeight||40;
-  const wrapPad=isMobile?14:28, schedBorder=4;
-  const availH=window.innerHeight-topbarH-subbarH-wrapPad-schedBorder;
-  const numRows=visibleCrew.length||1;
-  // Each row gets an equal share; minimum enough for one chip + padding
-  const rowH=isMobile
-    ? Math.max(chipH+cellPad+4, Math.floor((availH-headerH)/numRows))
-    : Math.max(chipH+cellPad+4, Math.floor((availH-headerH)/numRows));
+  // Pre-compute max jobs per person (their busiest day) to size rows
+  function personMaxJobs(name) {
+    let mx=1;
+    dates.forEach(d=>{
+      const cnt=allJobs.filter(j=>{
+        if(!jobOnDate(j,d)) return false;
+        const src=j.CrewText||j.Crew||'';
+        const crew=Array.isArray(src)?src:src.split(/;#|;|,/).map(c=>c.trim()).filter(Boolean);
+        return crew.some(c=>c===name);
+      }).length;
+      if(cnt>mx) mx=cnt;
+    });
+    return mx;
+  }
 
   let h='';
   const hasHidden=hiddenCrew.size>0;
@@ -2155,18 +2150,15 @@ function renderCrewGrid() {
   });
   h+=`</div>`;
 
-  // One row per visible crew member
+  // One row per visible crew member — height sized to busiest day
   visibleCrew.forEach((person)=>{
-    const hue=nameHue(person);
-    const initials=nameInitials(person);
-    // max chips that fit in fixed row height
-    const maxChips=Math.max(1,Math.floor((rowH-cellPad)/(chipH+chipGap)));
-    h+=`<div class="cat-row" data-person="${xe(person)}" style="grid-template-columns:${colTpl};height:${rowH}px;overflow:hidden" draggable="true">`;
+    const slots=personMaxJobs(person);
+    const rowH=cellPad + slots*chipH + (slots-1)*chipGap + cellPad;
+    h+=`<div class="cat-row" data-person="${xe(person)}" style="grid-template-columns:${colTpl};height:${rowH}px" draggable="true">`;
     h+=`<div class="cat-label" style="padding:0"><div class="crew-person-label">
       <div class="crew-drag-handle" title="Drag to reorder">
         <svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor"><circle cx="3" cy="2.5" r="1.3"/><circle cx="7" cy="2.5" r="1.3"/><circle cx="3" cy="7" r="1.3"/><circle cx="7" cy="7" r="1.3"/><circle cx="3" cy="11.5" r="1.3"/><circle cx="7" cy="11.5" r="1.3"/></svg>
       </div>
-      <div class="person-avatar" style="--person-hue:${hue}">${xe(initials)}</div>
       <div class="crew-person-name">${xe(person)}</div>
     </div></div>`;
 
@@ -2189,9 +2181,7 @@ function renderCrewGrid() {
       const isph=!!isHoliday(d);
       const cc=['day-cell',isToday(d)?'today':'',firstOfWeek?'week-start':'',jobs.length===0?'empty':'',isph?'holiday':''].filter(Boolean).join(' ');
       h+=`<div class="${cc}" data-date="${ds}" ${isph?'data-holiday="1"':''}>`;
-      const visible=jobs.slice(0,maxChips);
-      const overflow=jobs.length-visible.length;
-      visible.forEach(j=>{
+      jobs.forEach(j=>{
         const colorSlug=getColorSlug(j);
         const statusSlug=getStatusSlug(j.Status);
         const approved=!!(j['Client_x0020_has_x0020_approved_']??j.ClientApproved);
@@ -2205,7 +2195,6 @@ function renderCrewGrid() {
         h+=`${machine?`<span class="job-machine">${machine}</span>`:''}`;
         h+=`<span class="status-dot"></span></div>`;
       });
-      if(overflow>0) h+=`<div class="cell-overflow">+${overflow}</div>`;
       h+=`</div>`;
     });
     h+=`</div>`;
