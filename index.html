@@ -616,10 +616,10 @@ button { font:inherit; color:inherit; cursor:pointer; }
 #crew-grid .cat-row.drag-over-bot { box-shadow:inset 0 -3px 0 0 var(--accent); }
 #crew-grid .cat-row.dragging-row { opacity:0.4; }
 #crew-grid .cat-row { cursor:default; }
-#crew-grid .day-cell { cursor:default; }
+#crew-grid .day-cell { cursor:default; flex-direction:row; flex-wrap:wrap; align-content:flex-start; }
 #crew-grid .cat-row:nth-child(odd) .day-cell { background:oklch(0.995 0.002 250); }
 #crew-grid .cat-row:nth-child(odd) .cat-label { background:oklch(0.995 0.002 250); }
-#crew-grid .job { cursor:default; height:48px; pointer-events:none; }
+#crew-grid .job { cursor:default; height:48px; pointer-events:none; width:calc(50% - 2px); flex-shrink:0; flex-grow:0; }
 #crew-grid .job .job-machine { display:block; }
 /* Crew filter button + popover */
 .crew-filter-btn {
@@ -2150,10 +2150,11 @@ function renderCrewGrid() {
   });
   h+=`</div>`;
 
-  // One row per visible crew member — height sized to busiest day
+  // One row per visible crew member — height sized to busiest day (2 chips per row)
   visibleCrew.forEach((person)=>{
     const slots=personMaxJobs(person);
-    const rowH=cellPad + slots*chipH + (slots-1)*chipGap + cellPad;
+    const chipRows=Math.ceil(slots/2);
+    const rowH=cellPad + chipRows*chipH + (chipRows-1)*chipGap + cellPad;
     h+=`<div class="cat-row" data-person="${xe(person)}" style="grid-template-columns:${colTpl};height:${rowH}px" draggable="true">`;
     h+=`<div class="cat-label" style="padding:0"><div class="crew-person-label">
       <div class="crew-drag-handle" title="Drag to reorder">
