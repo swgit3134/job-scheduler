@@ -619,28 +619,61 @@ button { font:inherit; color:inherit; cursor:pointer; }
 #crew-grid .cat-row:nth-child(odd) .cat-label { background:oklch(0.995 0.002 250); }
 #crew-grid .job { cursor:default; height:48px; }
 #crew-grid .job .job-machine { display:block; }
-/* Crew filter panel inside corner cell */
-.crew-corner {
-  display:flex; flex-direction:column; justify-content:center; align-items:flex-start;
-  padding:6px 8px; gap:4px; overflow:hidden;
+/* Crew filter button + popover */
+.crew-filter-btn {
+  display:flex; align-items:center; gap:6px; padding:5px 10px;
+  background:var(--surface); border:1px solid var(--line); border-radius:8px;
+  font-size:11px; font-weight:600; color:var(--ink-2); cursor:pointer;
+  transition:border-color 80ms, background 80ms; white-space:nowrap;
 }
-.crew-corner-label {
-  font-size:8.5px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase;
-  color:var(--ink-3); white-space:nowrap;
+.crew-filter-btn:hover { border-color:var(--line-strong); background:var(--surface-2); }
+.crew-filter-btn.has-hidden { border-color:var(--accent); color:var(--accent-ink); background:oklch(0.94 0.035 255); }
+.crew-filter-btn svg { flex-shrink:0; }
+#crew-filter-pop {
+  position:fixed; z-index:200; background:var(--surface); border:1px solid var(--line);
+  border-radius:14px; padding:0; width:240px;
+  box-shadow:0 8px 32px -8px rgba(15,20,35,0.20), 0 2px 8px -2px rgba(15,20,35,0.10);
+  display:none;
 }
-.crew-pills {
-  display:flex; flex-wrap:wrap; gap:3px; overflow-y:auto; max-height:80px;
+#crew-filter-pop.open { display:block; }
+.cfp-head {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:12px 14px 10px; border-bottom:1px solid var(--line-2);
 }
-.crew-pill {
-  font-size:9px; font-weight:600; padding:2px 7px; border-radius:999px;
-  border:1px solid var(--line); background:var(--surface-2); color:var(--ink-2);
-  cursor:pointer; transition:background 80ms, color 80ms, border-color 80ms;
-  user-select:none; white-space:nowrap;
+.cfp-title { font-size:12px; font-weight:700; color:var(--ink); letter-spacing:0.01em; }
+.cfp-actions { display:flex; gap:8px; }
+.cfp-action {
+  font-size:11px; font-weight:600; color:var(--accent-ink); background:none;
+  border:none; cursor:pointer; padding:0; opacity:0.8;
 }
-.crew-pill.active {
-  background:var(--accent); color:#fff; border-color:var(--accent);
+.cfp-action:hover { opacity:1; }
+.cfp-list { padding:8px 0 10px; max-height:320px; overflow-y:auto; }
+.cfp-row {
+  display:flex; align-items:center; gap:10px;
+  padding:6px 14px; cursor:pointer; transition:background 60ms;
 }
-.crew-pill:hover { border-color:var(--line-strong); }
+.cfp-row:hover { background:var(--surface-2); }
+.cfp-avatar {
+  width:26px; height:26px; border-radius:50%; flex-shrink:0;
+  background:oklch(0.72 0.15 var(--person-hue,250));
+  color:#fff; font-size:9px; font-weight:700;
+  display:flex; align-items:center; justify-content:center;
+}
+.cfp-name { flex:1; font-size:12.5px; font-weight:500; color:var(--ink); }
+/* Toggle switch */
+.cfp-toggle { position:relative; width:32px; height:18px; flex-shrink:0; }
+.cfp-toggle input { opacity:0; width:0; height:0; position:absolute; }
+.cfp-toggle-track {
+  position:absolute; inset:0; border-radius:999px;
+  background:var(--line-strong); transition:background 150ms; cursor:pointer;
+}
+.cfp-toggle input:checked + .cfp-toggle-track { background:var(--accent); }
+.cfp-toggle-track::after {
+  content:''; position:absolute; top:2px; left:2px;
+  width:14px; height:14px; border-radius:50%; background:#fff;
+  transition:transform 150ms; box-shadow:0 1px 3px rgba(0,0,0,0.2);
+}
+.cfp-toggle input:checked + .cfp-toggle-track::after { transform:translateX(14px); }
 
 /* ---------- Admin ---------- */
 #admin-btn { display:none; }
@@ -915,6 +948,18 @@ button { font:inherit; color:inherit; cursor:pointer; }
       </table>
     </div>
   </div>
+</div>
+
+<!-- ── CREW FILTER POPOVER ───────────────────────────────────── -->
+<div id="crew-filter-pop">
+  <div class="cfp-head">
+    <span class="cfp-title">Show / Hide Crew</span>
+    <div class="cfp-actions">
+      <button class="cfp-action" onclick="setAllCrew(true)">All</button>
+      <button class="cfp-action" onclick="setAllCrew(false)">None</button>
+    </div>
+  </div>
+  <div class="cfp-list" id="cfp-list"></div>
 </div>
 
 <!-- ── JOB POPOVER ──────────────────────────────────────────── -->
@@ -1970,7 +2015,54 @@ function onSearchInput() {
 function toggleCrewMember(name) {
   if(hiddenCrew.has(name)) hiddenCrew.delete(name); else hiddenCrew.add(name);
   renderCrewGrid();
+  buildCrewFilterList(); // refresh popover without closing it
 }
+function setAllCrew(visible) {
+  if(visible) hiddenCrew.clear();
+  else CREW_LIST.forEach(n=>hiddenCrew.add(n));
+  renderCrewGrid();
+  buildCrewFilterList();
+}
+function openCrewFilter(e) {
+  e.stopPropagation();
+  const pop=document.getElementById('crew-filter-pop');
+  if(!pop) return;
+  buildCrewFilterList();
+  pop.classList.toggle('open');
+  if(!pop.classList.contains('open')) return;
+  // Position below button
+  const btn=e.currentTarget;
+  const rect=btn.getBoundingClientRect();
+  pop.style.top=(rect.bottom+6)+'px';
+  let left=rect.left;
+  if(left+240>window.innerWidth-8) left=window.innerWidth-248;
+  pop.style.left=Math.max(8,left)+'px';
+}
+function buildCrewFilterList() {
+  const list=document.getElementById('cfp-list');
+  if(!list) return;
+  list.innerHTML=CREW_LIST.map(name=>{
+    const visible=!hiddenCrew.has(name);
+    const hue=nameHue(name);
+    const initials=nameInitials(name);
+    const id='cfp-'+name.replace(/\s+/g,'_');
+    return `<label class="cfp-row" for="${id}">
+      <div class="cfp-avatar" style="--person-hue:${hue}">${xe(initials)}</div>
+      <span class="cfp-name">${xe(name)}</span>
+      <div class="cfp-toggle">
+        <input type="checkbox" id="${id}" ${visible?'checked':''} onchange="toggleCrewMember('${xe(name)}')">
+        <div class="cfp-toggle-track"></div>
+      </div>
+    </label>`;
+  }).join('');
+}
+// Close crew filter when clicking outside
+document.addEventListener('click',function(e){
+  const pop=document.getElementById('crew-filter-pop');
+  if(pop&&pop.classList.contains('open')&&!pop.contains(e.target)){
+    pop.classList.remove('open');
+  }
+});
 function nameHue(name) {
   let h=0; for(const c of name) h=(h*31+c.charCodeAt(0))%360; return h;
 }
@@ -1998,15 +2090,16 @@ function renderCrewGrid() {
 
   let h='';
 
-  // Header row — corner shows crew filter pills
   const visibleCrew=CREW_LIST.filter(n=>!hiddenCrew.has(n));
-  const pillsHtml=CREW_LIST.map(n=>{
-    const active=!hiddenCrew.has(n);
-    const hue=nameHue(n);
-    return `<span class="crew-pill${active?' active':''}" style="${active?`background:oklch(0.72 0.15 ${hue});border-color:oklch(0.62 0.15 ${hue})`:''}" onclick="toggleCrewMember('${xe(n)}')">${xe(n)}</span>`;
-  }).join('');
+  const hasHidden=hiddenCrew.size>0;
+  const hiddenCount=hiddenCrew.size;
   h+=`<div class="day-header-row" style="grid-template-columns:${colTpl}">`;
-  h+=`<div class="corner" style="padding:0"><div class="crew-corner"><div class="crew-corner-label">Show / hide</div><div class="crew-pills">${pillsHtml}</div></div></div>`;
+  h+=`<div class="corner" style="justify-content:center">
+    <button class="crew-filter-btn${hasHidden?' has-hidden':''}" onclick="openCrewFilter(event)">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
+      ${hasHidden?`${CREW_LIST.length-hiddenCount} of ${CREW_LIST.length}`:'All crew'}
+    </button>
+  </div>`;
   dates.forEach((d,i)=>{
     const firstOfWeek=d._weekIndex>0&&i%5===0;
     const ph=isHoliday(d);
