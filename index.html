@@ -613,6 +613,15 @@ button { font:inherit; color:inherit; cursor:pointer; }
   font-size:10px; font-weight:600; color:var(--ink-2); text-align:center;
   line-height:1.2; word-break:break-word; max-width:100%;
 }
+.crew-drag-handle {
+  color:var(--ink-3); opacity:0.4; cursor:grab; padding:2px; flex-shrink:0;
+  transition:opacity 80ms;
+}
+.crew-person-label:hover .crew-drag-handle { opacity:0.9; }
+.crew-person-label { position:relative; }
+#crew-grid .cat-row.drag-over-top { box-shadow:inset 0 3px 0 0 var(--accent); }
+#crew-grid .cat-row.drag-over-bot { box-shadow:inset 0 -3px 0 0 var(--accent); }
+#crew-grid .cat-row.dragging-row { opacity:0.4; }
 #crew-grid .cat-row { cursor:default; }
 #crew-grid .day-cell { cursor:default; }
 #crew-grid .cat-row:nth-child(odd) .day-cell { background:oklch(0.995 0.002 250); }
@@ -1216,7 +1225,13 @@ const COLOR_SWATCHES = {
   'Orange':  'oklch(0.76 0.16 55)',
 };
 
-let CREW_LIST = ['Brad','Cornell','Cotter','Dash','David','Dulaj','Gayan','Javier','Nadeeka','Phil','Pasindu','Ray','Ravi','Sasika','Uchitha','Michael','Hakim'];
+let CREW_LIST = (()=>{
+  try {
+    const saved=localStorage.getItem('crewOrder');
+    if(saved) { const arr=JSON.parse(saved); if(Array.isArray(arr)&&arr.length) return arr; }
+  } catch(e){}
+  return ['Brad','Cornell','Cotter','Dash','David','Dulaj','Gayan','Javier','Nadeeka','Phil','Pasindu','Ray','Ravi','Sasika','Uchitha','Michael','Hakim'];
+})();
 
 // ── STATE ──────────────────────────────────────────────────────────
 const msalCfg = {
@@ -2112,8 +2127,14 @@ function renderCrewGrid() {
   visibleCrew.forEach(person=>{
     const hue=nameHue(person);
     const initials=nameInitials(person);
-    h+=`<div class="cat-row" style="grid-template-columns:${colTpl};min-height:${rowH}px">`;
-    h+=`<div class="cat-label" style="padding:0"><div class="crew-person-label"><div class="person-avatar" style="--person-hue:${hue}">${xe(initials)}</div><div class="crew-person-name">${xe(person)}</div></div></div>`;
+    h+=`<div class="cat-row" data-person="${xe(person)}" style="grid-template-columns:${colTpl};min-height:${rowH}px" draggable="true">`;
+    h+=`<div class="cat-label" style="padding:0"><div class="crew-person-label">
+      <div class="crew-drag-handle" title="Drag to reorder">
+        <svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor"><circle cx="3" cy="2.5" r="1.3"/><circle cx="7" cy="2.5" r="1.3"/><circle cx="3" cy="7" r="1.3"/><circle cx="7" cy="7" r="1.3"/><circle cx="3" cy="11.5" r="1.3"/><circle cx="7" cy="11.5" r="1.3"/></svg>
+      </div>
+      <div class="person-avatar" style="--person-hue:${hue}">${xe(initials)}</div>
+      <div class="crew-person-name">${xe(person)}</div>
+    </div></div>`;
 
     dates.forEach((d,cellIdx)=>{
       const ds=fdate(d);
@@ -2155,11 +2176,51 @@ function renderCrewGrid() {
 
   grid.innerHTML=h;
 
-  // Click handler — open job detail (read-only click, no drag)
+  // Click handler — open job detail
   grid.onclick=function(e) {
     const card=e.target.closest('.job');
     if(card) { e.stopPropagation(); const id=card.dataset.jobid; if(id) openEdit(id); }
   };
+
+  // Row drag-to-reorder
+  let dragSrc=null;
+  grid.querySelectorAll('.cat-row[data-person]').forEach(row=>{
+    row.addEventListener('dragstart',e=>{
+      dragSrc=row.dataset.person;
+      row.classList.add('dragging-row');
+      e.dataTransfer.effectAllowed='move';
+      e.dataTransfer.setData('text/plain',dragSrc);
+    });
+    row.addEventListener('dragend',()=>{
+      row.classList.remove('dragging-row');
+      grid.querySelectorAll('.cat-row').forEach(r=>r.classList.remove('drag-over-top','drag-over-bot'));
+    });
+    row.addEventListener('dragover',e=>{
+      if(!dragSrc||row.dataset.person===dragSrc) return;
+      e.preventDefault(); e.dataTransfer.dropEffect='move';
+      const mid=row.getBoundingClientRect().top+row.offsetHeight/2;
+      grid.querySelectorAll('.cat-row').forEach(r=>r.classList.remove('drag-over-top','drag-over-bot'));
+      row.classList.add(e.clientY<mid?'drag-over-top':'drag-over-bot');
+    });
+    row.addEventListener('dragleave',()=>{
+      row.classList.remove('drag-over-top','drag-over-bot');
+    });
+    row.addEventListener('drop',e=>{
+      e.preventDefault();
+      if(!dragSrc||row.dataset.person===dragSrc) return;
+      const mid=row.getBoundingClientRect().top+row.offsetHeight/2;
+      const insertBefore=e.clientY<mid;
+      const fromIdx=CREW_LIST.indexOf(dragSrc);
+      let toIdx=CREW_LIST.indexOf(row.dataset.person);
+      if(fromIdx===-1||toIdx===-1) return;
+      CREW_LIST.splice(fromIdx,1);
+      toIdx=CREW_LIST.indexOf(row.dataset.person);
+      CREW_LIST.splice(insertBefore?toIdx:toIdx+1,0,dragSrc);
+      try { localStorage.setItem('crewOrder',JSON.stringify(CREW_LIST)); } catch(e){}
+      dragSrc=null;
+      renderCrewGrid();
+    });
+  });
 }
 function formatDisplayDate(dateStr) {
   if(!dateStr) return '—';
