@@ -626,7 +626,7 @@ button { font:inherit; color:inherit; cursor:pointer; }
 #crew-grid .day-cell { cursor:default; }
 #crew-grid .cat-row:nth-child(odd) .day-cell { background:oklch(0.995 0.002 250); }
 #crew-grid .cat-row:nth-child(odd) .cat-label { background:oklch(0.995 0.002 250); }
-#crew-grid .job { cursor:default; height:48px; }
+#crew-grid .job { cursor:default; height:48px; pointer-events:none; }
 #crew-grid .job .job-machine { display:block; }
 /* Crew filter button + popover */
 .crew-filter-btn {
@@ -2206,12 +2206,6 @@ function renderCrewGrid() {
   });
 
   grid.innerHTML=h;
-
-  // Click handler — open job detail
-  grid.onclick=function(e) {
-    const card=e.target.closest('.job');
-    if(card) { e.stopPropagation(); const id=card.dataset.jobid; if(id) openEdit(id); }
-  };
 
   // Row drag-to-reorder
   let dragSrc=null;
