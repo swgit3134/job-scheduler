@@ -573,7 +573,6 @@ button { font:inherit; color:inherit; cursor:pointer; }
   .toast { left:12px; right:12px; transform:translateY(120%); bottom:12px; border-radius:12px; }
   .toast.show { transform:translateY(0); }
   .search { min-width:0; flex:1; }
-  #crew-grid .job { width:100%; }
 }
 @media (max-width: 480px) {
   .brand-app { display:none; }
@@ -677,6 +676,11 @@ button { font:inherit; color:inherit; cursor:pointer; }
   transition:transform 150ms; box-shadow:0 1px 3px rgba(0,0,0,0.2);
 }
 .cfp-toggle input:checked + .cfp-toggle-track::after { transform:translateX(14px); }
+
+/* Crew mobile overrides — must come after the crew rules above */
+@media (max-width: 768px) {
+  #crew-grid .job { width:100%; }
+}
 
 /* ---------- Admin ---------- */
 #admin-btn { display:none; }
