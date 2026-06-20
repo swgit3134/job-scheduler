@@ -1457,13 +1457,15 @@ function getViewDates() {
 function getWeekDates() { return getViewDates(); }
 function getCrewViewDates() {
   if(currentView==='month') {
+    const isMob=window.innerWidth<768;
     const today=new Date(); today.setHours(0,0,0,0);
     const dow=today.getDay();
     const weekendOffset=(dow===6||dow===0)?7:0;
     const mon=new Date(today);
     mon.setDate(today.getDate()-(dow===0?6:dow-1)+weekendOffset+viewOffset*7);
     const dates=[];
-    for(let w=0;w<2;w++) {
+    const weeks=isMob?1:2;
+    for(let w=0;w<weeks;w++) {
       for(let d=0;d<5;d++) {
         const day=new Date(mon); day.setDate(mon.getDate()+w*7+d);
         day._weekIndex=w; dates.push(day);
