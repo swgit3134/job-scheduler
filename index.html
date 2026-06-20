@@ -573,6 +573,7 @@ button { font:inherit; color:inherit; cursor:pointer; }
   .toast { left:12px; right:12px; transform:translateY(120%); bottom:12px; border-radius:12px; }
   .toast.show { transform:translateY(0); }
   .search { min-width:0; flex:1; }
+  #crew-grid .job { width:100%; }
 }
 @media (max-width: 480px) {
   .brand-app { display:none; }
@@ -2152,10 +2153,11 @@ function renderCrewGrid() {
   });
   h+=`</div>`;
 
-  // One row per visible crew member — height sized to busiest day (2 chips per row)
+  // One row per visible crew member — height sized to busiest day
+  // Desktop: 2 chips per row; mobile: 1 chip per row (full width)
   visibleCrew.forEach((person)=>{
     const slots=personMaxJobs(person);
-    const chipRows=Math.ceil(slots/2);
+    const chipRows=isMobile?slots:Math.ceil(slots/2);
     const rowH=cellPad + chipRows*chipH + (chipRows-1)*chipGap + cellPad;
     h+=`<div class="cat-row" data-person="${xe(person)}" style="grid-template-columns:${colTpl};height:${rowH}px" draggable="true">`;
     h+=`<div class="cat-label" style="padding:0"><div class="crew-person-label">
