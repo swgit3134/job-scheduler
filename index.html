@@ -230,6 +230,7 @@ button { font:inherit; color:inherit; cursor:pointer; }
 }
 .cat-label .row-bar { width:20px; height:3px; border-radius:999px; background:var(--cat-bar,var(--line-strong)); margin-bottom:1px; }
 .cat-label .name { font-size:12px; font-weight:600; letter-spacing:0.01em; color:var(--ink); }
+.cat-label .sublabel { font-size:9px; font-weight:600; letter-spacing:0.06em; color:var(--ink-3); margin-top:1px; }
 
 .day-cell {
   padding:4px 4px; border-right:1px solid var(--line-2);
@@ -1197,7 +1198,8 @@ function isHoliday(d) {
 }
 
 const ROW_DEFS = [
-  { label:'GEOPROBE',      tiles:4, matches:['GEOPROBE V4','Geoprobe V4','geoprobe v4','GEOPROBE V3','Geoprobe V3','geoprobe v3'] },
+  { label:'GEOPROBE', sublabel:'V3', tiles:4, matches:['GEOPROBE V3','Geoprobe V3','geoprobe v3'] },
+  { label:'GEOPROBE', sublabel:'V4', tiles:4, matches:['GEOPROBE V4','Geoprobe V4','geoprobe v4'] },
   { label:'HANJIN (TRACK)',tiles:1, matches:['HANJIN (TRUCK)','Hanjin (Truck)','HANJIN (TRACK)','Hanjin (Track)','HANJIN','Hanjin'] },
   { label:'COM 305',       tiles:1, matches:['COM 305','Com 305'] },
   { label:'E/PROBE',       tiles:4, matches:['E/PROBE','E/Probe','e/probe'] },
@@ -1553,7 +1555,7 @@ function renderCal() {
     const matchSet=new Set(row.matches.map(m=>m.toLowerCase()));
 
     h+=`<div class="cat-row" style="grid-template-columns:${colTpl};min-height:${rowH}px">`;
-    h+=`<div class="cat-label" style="--cat-bar:${catBar}"><div class="row-bar"></div><div class="name">${xe(row.label)}</div></div>`;
+    h+=`<div class="cat-label" style="--cat-bar:${catBar}"><div class="row-bar"></div><div class="name">${xe(row.label)}</div>${row.sublabel?`<div class="sublabel">${xe(row.sublabel)}</div>`:''}</div>`;
 
     dates.forEach(d=>{
       const ds=fdate(d);
