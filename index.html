@@ -1291,7 +1291,18 @@ async function signIn() {
   }
 }
 let _autoRefreshTimer=null;
-let hiddenCrew=new Set(); // crew members hidden in crew grid view
+// crew members hidden in crew grid view — restored from localStorage on load
+let hiddenCrew=(()=>{
+  try {
+    const defs=JSON.parse(localStorage.getItem('crewDefaults')||'null');
+    if(Array.isArray(defs)&&defs.length) {
+      // defaults are the VISIBLE set; hide everyone not in it
+      const defSet=new Set(defs);
+      return new Set((JSON.parse(localStorage.getItem('crewOrder')||'null')||['Brad','Cornell','Cotter','Dash','David','Dulaj','Gayan','Javier','Nadeeka','Phil','Pasindu','Ray','Ravi','Sasika','Uchitha','Michael','Hakim']).filter(n=>!defSet.has(n)));
+    }
+  } catch(e){}
+  return new Set();
+})();
 function startAutoRefresh() {
   clearInterval(_autoRefreshTimer);
   _autoRefreshTimer=setInterval(()=>{ if(allJobs.length>0) loadJobs(); },5*60*1000);
@@ -1901,17 +1912,39 @@ async function seedVicHolidays() {
   } catch(e) { toast('Error: '+e.message,'error'); if(btn){btn.textContent='Import VIC Holidays';btn.disabled=false;} }
 }
 // ── Manage Crew ──
+function getCrewDefaultSet() {
+  try {
+    const d=JSON.parse(localStorage.getItem('crewDefaults')||'null');
+    if(Array.isArray(d)) return new Set(d);
+  } catch(e){}
+  return new Set(CREW_LIST); // all visible by default if never set
+}
+function toggleCrewDefault(name) {
+  const s=getCrewDefaultSet();
+  if(s.has(name)) s.delete(name); else s.add(name);
+  localStorage.setItem('crewDefaults',JSON.stringify([...s]));
+  // also update live hiddenCrew
+  if(s.has(name)) hiddenCrew.delete(name); else hiddenCrew.add(name);
+  renderCrewTab();
+}
 async function renderCrewTab() {
   const el=document.getElementById('admin-panel-content');
   const initMap=getCrewInitialsMap();
+  const defSet=getCrewDefaultSet();
   el.innerHTML=`
     <div class="admin-section-title">Crew Members</div>
+    <div style="font-size:11.5px;color:var(--ink-3);padding:0 0 8px 0">Check the box to show a crew member by default in My Schedule view.</div>
     <div class="admin-list">
       ${CREW_LIST.map(name=>{
         const auto=nameInitials(name);
         const custom=initMap[name]||'';
+        const isDefault=defSet.has(name);
         return `<div class="admin-list-item">
-          <span class="item-label">${xe(name)}</span>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;flex:1;min-width:0">
+            <input type="checkbox" ${isDefault?'checked':''} onchange="toggleCrewDefault('${xe(name)}')"
+              style="width:15px;height:15px;cursor:pointer;accent-color:var(--accent)">
+            <span class="item-label">${xe(name)}</span>
+          </label>
           <div style="display:flex;align-items:center;gap:8px">
             <input class="crew-init-input" type="text" maxlength="2" value="${xe(custom)}"
               placeholder="${xe(auto)}" title="Custom initials (leave blank to auto)"
@@ -2017,14 +2050,21 @@ function setMode(m) {
 function onSearchInput() {
   if(currentMode==='list') renderList(); else if(currentMode==='crew') renderCrewGrid(); else renderCal();
 }
+function persistHiddenCrew() {
+  // Save visible set as crewDefaults so it survives refresh
+  const visible=CREW_LIST.filter(n=>!hiddenCrew.has(n));
+  try { localStorage.setItem('crewDefaults',JSON.stringify(visible)); } catch(e){}
+}
 function toggleCrewMember(name) {
   if(hiddenCrew.has(name)) hiddenCrew.delete(name); else hiddenCrew.add(name);
+  persistHiddenCrew();
   renderCrewGrid();
-  buildCrewFilterList(); // refresh popover without closing it
+  buildCrewFilterList();
 }
 function setAllCrew(visible) {
   if(visible) hiddenCrew.clear();
   else CREW_LIST.forEach(n=>hiddenCrew.add(n));
+  persistHiddenCrew();
   renderCrewGrid();
   buildCrewFilterList();
 }
