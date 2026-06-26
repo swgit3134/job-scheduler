@@ -1903,9 +1903,15 @@ async function renderCrewTab() {
     </div>`;
 }
 async function saveCrewChoices(list) {
-  if(!crewColumnId) { toast('Crew column ID not loaded — refresh and try again','error'); return false; }
-  const sid=await getSite();
-  await gfetch('PATCH',`/sites/${sid}/lists/${LIST_NAME}/columns/${crewColumnId}`,{choice:{choices:list}});
+  // Persist locally so changes survive refresh (crewOrder is what CREW_LIST reads on boot)
+  try { localStorage.setItem('crewOrder',JSON.stringify(list)); } catch(e) {}
+  // Best-effort sync to SharePoint choice column if one exists
+  if(crewColumnId) {
+    try {
+      const sid=await getSite();
+      await gfetch('PATCH',`/sites/${sid}/lists/${LIST_NAME}/columns/${crewColumnId}`,{choice:{choices:list}});
+    } catch(e) { console.warn('SP crew column sync skipped:',e.message); }
+  }
   return true;
 }
 async function addCrewMember() {
@@ -1914,7 +1920,7 @@ async function addCrewMember() {
   if(!name) { toast('Enter a name','error'); return; }
   if(CREW_LIST.some(c=>c.toLowerCase()===name.toLowerCase())) { toast('Already in crew list','error'); return; }
   try {
-    const updated=[...CREW_LIST,name].sort();
+    const updated=[...CREW_LIST,name];
     await saveCrewChoices(updated);
     CREW_LIST=updated;
     inp.value='';
