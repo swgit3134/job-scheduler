@@ -2473,7 +2473,7 @@ async function saveSingleJob() {
   fields['Status']=document.getElementById('f-status').value||'Fieldwork Scheduled';
   fields['Machine']=document.getElementById('f-machine').value;
   if(suburb) fields['Suburb']=suburb;
-  if(selectedCrew.length>0) fields['CrewText']=selectedCrew.join(', ');
+  fields['CrewText']=selectedCrew.join(', ');
   if(colorName) { fields['Color']=colorName; fields['ColorCode']=colorHex; }
   const notesField=fieldMap['notes']||'Notes';
   fields[notesField]=document.getElementById('f-notes').value;
@@ -2509,7 +2509,7 @@ async function createMultipleDailyJobs() {
     if(jobNum) fields['JobNumber']=jobNum;
     fields['Status']=status; fields['Machine']=machine;
     if(suburb) fields['Suburb']=suburb;
-    if(selectedCrew.length>0) fields['CrewText']=selectedCrew.join(', ');
+    fields['CrewText']=selectedCrew.join(', ');
     if(colorName) { fields['Color']=colorName; fields['ColorCode']=colorHex; }
     fields[notesField]=notes;
     fields['Start_x0020_Date']=dateStr+'T12:00:00.000Z';
