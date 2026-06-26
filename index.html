@@ -550,27 +550,24 @@ button { font:inherit; color:inherit; cursor:pointer; }
   .cat-label .meta { display:none; }
 }
 
-/* ---------- Crew legend ---------- */
-.legend-wrap { position:relative; }
-.legend-pop {
-  display:none; position:absolute; top:calc(100% + 6px); right:0; z-index:900;
-  background:var(--surface); border:1px solid var(--line); border-radius:10px;
-  box-shadow:0 6px 24px rgba(0,0,0,0.12); padding:10px 8px;
-  min-width:180px; max-height:320px; overflow-y:auto;
+/* ---------- Crew legend bar ---------- */
+#crew-legend-bar {
+  display:flex; align-items:center; gap:4px;
+  padding:5px 20px; background:var(--bg); border-bottom:1px solid var(--line-2);
+  overflow-x:auto; flex-shrink:0; scrollbar-width:none;
 }
-.legend-pop.open { display:block; }
-.legend-row {
-  display:flex; align-items:center; gap:8px;
-  padding:4px 8px; border-radius:6px; font-size:12px; color:var(--ink-2);
+#crew-legend-bar::-webkit-scrollbar { display:none; }
+.legend-chip {
+  display:inline-flex; align-items:center; gap:5px;
+  padding:3px 8px 3px 3px; border-radius:999px; flex-shrink:0;
+  background:var(--surface); border:1px solid var(--line);
+  font-size:11.5px; font-weight:500; color:var(--ink-2); white-space:nowrap;
 }
-.legend-row:hover { background:var(--surface-2); }
-.legend-bubble {
-  width:22px; height:22px; border-radius:50%; flex-shrink:0;
+.legend-chip .legend-bubble {
+  width:20px; height:20px; border-radius:50%; flex-shrink:0;
   display:flex; align-items:center; justify-content:center;
-  font-size:8px; font-weight:700; color:var(--ink);
-  background:oklch(0.90 0.03 250); border:1px solid oklch(0.82 0.06 250);
+  font-size:7px; font-weight:700;
 }
-.legend-name { font-weight:500; color:var(--ink); }
 
 /* ---------- Mode-toggle icons in subbar ---------- */
 .mode-toggle { display:inline-flex; gap:2px; }
@@ -890,16 +887,6 @@ button { font:inherit; color:inherit; cursor:pointer; }
         </svg>
         <input id="search-input" placeholder="Search jobs…" oninput="onSearchInput()">
       </div>
-      <div class="legend-wrap">
-        <button class="chip-btn" id="legend-btn" onclick="toggleLegend()" title="Crew legend">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="8" r="4"/>
-            <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
-          </svg>
-          <span>Crew</span>
-        </button>
-        <div class="legend-pop" id="legend-pop"></div>
-      </div>
       <div class="mode-toggle">
         <button id="mode-grid-btn" class="active" onclick="setMode('grid')" title="Grid view">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -925,6 +912,9 @@ button { font:inherit; color:inherit; cursor:pointer; }
       </div>
     </div>
   </div>
+
+  <!-- Crew legend bar -->
+  <div id="crew-legend-bar"></div>
 
   <!-- Schedule -->
   <div class="schedule-wrap" id="schedule-wrap" style="display:block">
@@ -1390,7 +1380,7 @@ async function onIn(acc) {
   const av=document.getElementById('user-avatar'); if(av) av.textContent=initials;
   currentUserEmail=(acc.username||acc.idTokenClaims?.preferred_username||'').toLowerCase();
   try { await token(); } catch(e) { console.warn('Token pre-warm:',e.message); }
-  requestAnimationFrame(()=>loadFieldMap().then(()=>Promise.all([checkAdminStatus(),loadCalendarEntries()])).then(()=>{ loadJobs(); startAutoRefresh(); }));
+  requestAnimationFrame(()=>loadFieldMap().then(()=>{ renderCrewLegendBar(); return Promise.all([checkAdminStatus(),loadCalendarEntries()]); }).then(()=>{ loadJobs(); startAutoRefresh(); }));
 }
 
 // ── HELPERS ──────────────────────────────────────────────────────
@@ -1984,6 +1974,7 @@ async function addCrewMember() {
     CREW_LIST=updated;
     inp.value='';
     toast(`${name} added ✓`);
+    renderCrewLegendBar();
     renderCrewTab();
   } catch(e) { toast('Error: '+e.message,'error'); }
 }
@@ -1994,6 +1985,7 @@ async function removeCrewMember(name) {
     await saveCrewChoices(updated);
     CREW_LIST=updated;
     toast(`${name} removed ✓`);
+    renderCrewLegendBar();
     renderCrewTab();
   } catch(e) { toast('Error: '+e.message,'error'); }
 }
@@ -2131,6 +2123,7 @@ function saveCrewInitial(name,value) {
   if(v) map[name]=v; else delete map[name];
   localStorage.setItem('crewInitials',JSON.stringify(map));
   _crewInitialsCache=map;
+  renderCrewLegendBar();
   if(currentMode==='grid') renderCal();
   else if(currentMode==='crew') renderCrewGrid();
 }
@@ -2342,29 +2335,17 @@ function renderList() {
     </tr>`;
   }).join('');
 }
-function toggleLegend() {
-  const pop=document.getElementById('legend-pop');
-  const isOpen=pop.classList.toggle('open');
-  if(isOpen) {
-    const map=getCrewInitialsMap();
-    pop.innerHTML=CREW_LIST.map(name=>{
-      const initials=getCrewInitials(name);
-      const hue=nameHue(name);
-      return `<div class="legend-row">
-        <div class="legend-bubble" style="background:oklch(0.88 0.08 ${hue});border-color:oklch(0.76 0.12 ${hue});color:oklch(0.28 0.08 ${hue})">${xe(initials)}</div>
-        <span class="legend-name">${xe(name)}</span>
-      </div>`;
-    }).join('');
-    setTimeout(()=>document.addEventListener('click',closeLegendOnOutside),0);
-  } else {
-    document.removeEventListener('click',closeLegendOnOutside);
-  }
-}
-function closeLegendOnOutside(e) {
-  if(!e.target.closest('.legend-wrap')) {
-    document.getElementById('legend-pop').classList.remove('open');
-    document.removeEventListener('click',closeLegendOnOutside);
-  }
+function renderCrewLegendBar() {
+  const bar=document.getElementById('crew-legend-bar');
+  if(!bar) return;
+  bar.innerHTML=CREW_LIST.map(name=>{
+    const initials=getCrewInitials(name);
+    const hue=nameHue(name);
+    return `<div class="legend-chip">
+      <div class="legend-bubble" style="background:oklch(0.88 0.08 ${hue});border:1px solid oklch(0.76 0.12 ${hue});color:oklch(0.28 0.08 ${hue})">${xe(initials)}</div>
+      ${xe(name)}
+    </div>`;
+  }).join('');
 }
 function toggleFilter() {
   filterOn=!filterOn;
