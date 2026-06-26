@@ -1322,8 +1322,12 @@ async function loadFieldMap() {
     cols.value.forEach(c=>{
       fieldMap[c.displayName.toLowerCase()]=c.name;
       if(c.displayName==='Crew'&&c.choice?.choices?.length>0) {
-        CREW_LIST=c.choice.choices.filter(Boolean).sort();
         crewColumnId=c.id;
+        // Only use SP choices as the source of truth if no local list is saved
+        // (local list wins so admin add/remove persists)
+        if(!localStorage.getItem('crewOrder')) {
+          CREW_LIST=c.choice.choices.filter(Boolean).sort();
+        }
       }
     });
   } catch(e) { console.warn('loadFieldMap:',e.message); }
@@ -1920,7 +1924,7 @@ async function addCrewMember() {
   if(!name) { toast('Enter a name','error'); return; }
   if(CREW_LIST.some(c=>c.toLowerCase()===name.toLowerCase())) { toast('Already in crew list','error'); return; }
   try {
-    const updated=[...CREW_LIST,name];
+    const updated=[...CREW_LIST,name].sort((a,b)=>a.localeCompare(b));
     await saveCrewChoices(updated);
     CREW_LIST=updated;
     inp.value='';
