@@ -2391,13 +2391,22 @@ function clearForm() {
   document.getElementById('f-split-by-day').checked=false;
   ['f-ca','f-bk'].forEach(id=>document.getElementById(id).checked=false);
   selectedCrew=[];
+  // Always close crew dropdown so it doesn't cover subsequent fields
+  const dd=document.getElementById('crew-dropdown');
+  if(dd) dd.style.display='none';
+  document.removeEventListener('click',closeCrewOnOutside);
   updateCrewDisplay();
   setColorPicker('');
   jrFoundId=null;
   const jrEl=document.getElementById('jr-status'); if(jrEl) jrEl.innerHTML='';
 }
 
-function closeModal() { document.getElementById('modal-bg').classList.remove('open'); }
+function closeModal() {
+  document.getElementById('modal-bg').classList.remove('open');
+  const dd=document.getElementById('crew-dropdown');
+  if(dd) dd.style.display='none';
+  document.removeEventListener('click',closeCrewOnOutside);
+}
 function bgClose(e) { if(e.target===document.getElementById('modal-bg')) closeModal(); }
 
 // ── SAVE / DELETE ─────────────────────────────────────────────────
