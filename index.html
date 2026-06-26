@@ -2519,8 +2519,8 @@ async function saveSingleJob() {
   if(suburb) fields['Suburb']=suburb;
   if(selectedCrew.length>0) fields['CrewText']=selectedCrew.join(', ');
   if(colorName) { fields['Color']=colorName; fields['ColorCode']=colorHex; }
-  const notes=document.getElementById('f-notes').value;
-  if(notes) fields['Notes']=notes;
+  const notesField=fieldMap['notes']||'Notes';
+  fields[notesField]=document.getElementById('f-notes').value;
   const sd=document.getElementById('f-startdate').value;
   const ed=document.getElementById('f-enddate').value;
   if(sd) fields['Start_x0020_Date']=sd+'T12:00:00.000Z';
@@ -2543,6 +2543,7 @@ async function createMultipleDailyJobs() {
   const colorName=document.getElementById('f-color-name').value;
   const colorHex=COLOR_MAP[colorName]||'#FFFFFF';
   const notes=document.getElementById('f-notes').value;
+  const notesField=fieldMap['notes']||'Notes';
   const ca=document.getElementById('f-ca').checked;
   const bk=document.getElementById('f-bk').checked;
   const sid=await getSite(); let count=0;
@@ -2554,7 +2555,7 @@ async function createMultipleDailyJobs() {
     if(suburb) fields['Suburb']=suburb;
     if(selectedCrew.length>0) fields['CrewText']=selectedCrew.join(', ');
     if(colorName) { fields['Color']=colorName; fields['ColorCode']=colorHex; }
-    if(notes) fields['Notes']=notes;
+    fields[notesField]=notes;
     fields['Start_x0020_Date']=dateStr+'T12:00:00.000Z';
     fields['End_x0020_Date']=dateStr+'T12:00:00.000Z';
     fields['Client_x0020_has_x0020_approved_']=ca;
