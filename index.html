@@ -299,29 +299,6 @@ button { font:inherit; color:inherit; cursor:pointer; }
   letter-spacing:0.04em; cursor:default; flex-shrink:0; align-self:center;
 }
 
-/* Job detail popover */
-#job-popover {
-  position:fixed; z-index:9999; pointer-events:none;
-  background:var(--surface); border:1px solid var(--line);
-  border-radius:12px; padding:14px 16px; width:260px;
-  box-shadow:0 8px 32px -8px rgba(15,20,35,0.22),0 2px 8px -2px rgba(15,20,35,0.10);
-  opacity:0; transform:scale(0.96) translateY(4px);
-  transition:opacity 120ms, transform 120ms;
-}
-#job-popover.visible { opacity:1; transform:scale(1) translateY(0); pointer-events:auto; }
-.pop-color-bar { height:3px; border-radius:2px; margin-bottom:10px; }
-.pop-jobno { font-family:var(--font-mono); font-size:13px; font-weight:700; color:var(--ink); }
-.pop-suburb { font-size:14px; font-weight:600; color:var(--ink); margin-top:2px; }
-.pop-row { display:flex; gap:6px; align-items:baseline; margin-top:6px; font-size:12px; }
-.pop-label { font-size:10px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-3); min-width:54px; flex-shrink:0; }
-.pop-val { color:var(--ink-2); }
-.pop-divider { height:1px; background:var(--line-2); margin:8px 0; }
-.pop-actions { display:flex; gap:8px; margin-top:10px; }
-.pop-edit-btn {
-  flex:1; padding:7px; background:var(--accent); color:#fff; border:none;
-  border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; text-align:center;
-}
-.pop-edit-btn:hover { background:oklch(0.44 0.16 255); }
 .job[data-color="white"]  { --c-bg:var(--white-bg);  --c-ink:var(--white-ink);  --c-bar:var(--white-bar); }
 .job[data-color="yellow"] { --c-bg:var(--yellow-bg); --c-ink:var(--yellow-ink); --c-bar:var(--yellow-bar); }
 .job[data-color="green"]  { --c-bg:var(--green-bg);  --c-ink:var(--green-ink);  --c-bar:var(--green-bar); }
@@ -968,8 +945,6 @@ button { font:inherit; color:inherit; cursor:pointer; }
 </div>
 
 <!-- ── JOB POPOVER ──────────────────────────────────────────── -->
-<div id="job-popover" onmouseenter="cancelHidePopover()" onmouseleave="schedHidePopover()"></div>
-
 <!-- ── ADMIN MODAL ───────────────────────────────────────────── -->
 <div class="modal-scrim" id="admin-modal-bg" onclick="bgAdminClose(event)">
   <div class="modal admin-modal">
@@ -1594,7 +1569,7 @@ function renderCal() {
         const crewSrc=j.CrewText||j.Crew||'';
         const crewArr=(Array.isArray(crewSrc)?crewSrc:crewSrc.split(/;#|;|,/).map(c=>c.trim())).filter(Boolean);
         const crewInits=crewArr.length?`<span class="crew-initials">${crewArr.map(n=>`<span class="crew-init" style="--person-hue:${nameHue(n)}" title="${xe(n)}">${xe(getCrewInitials(n))}</span>`).join('')}</span>`:'';
-        h+=`<div class="job${isPast?' past':''}${noAccess}" data-jobid="${j.id}" data-color="${colorSlug}" data-status="${statusSlug}" ${draggable} onmouseenter="showJobPopover(event,'${j.id}')" onmouseleave="schedHidePopover()">`;
+        h+=`<div class="job${isPast?' past':''}${noAccess}" data-jobid="${j.id}" data-color="${colorSlug}" data-status="${statusSlug}" ${draggable}>`;
         h+=`<div class="job-head"><span class="job-no">${jobno}</span>${crewInits}</div>`;
         h+=`<span class="job-suburb">${suburb}</span></div>`;
       });
@@ -1956,65 +1931,6 @@ async function removeCrewMember(name) {
   } catch(e) { toast('Error: '+e.message,'error'); }
 }
 
-// ── JOB POPOVER ──────────────────────────────────────────────────
-let _popHideTimer=null;
-function showJobPopover(e,jobId) {
-  if(window.innerWidth<=1024) return; // no hover popover on mobile/tablet
-  cancelHidePopover();
-  const j=allJobs.find(x=>x.id===jobId); if(!j) return;
-  const pop=document.getElementById('job-popover'); if(!pop) return;
-  const color=getColorSlug(j);
-  const status=(j.Status||'').trim();
-  const sl=getStatusSlug(status);
-  const badgeCls=sl==='confirmed'?'status-confirmed':sl==='tentative'?'status-tentative':'status-default';
-  const crew=(j.CrewText||(Array.isArray(j.Crew)?j.Crew.join(', '):(j.Crew||''))||'').replace(/;#/g,', ').trim();
-  const startStr=j.Start_x0020_Date?formatDisplayDate(j.Start_x0020_Date.split('T')[0]):'—';
-  const endStr=j.End_x0020_Date?formatDisplayDate(j.End_x0020_Date.split('T')[0]):'';
-  const dateRange=endStr&&endStr!==startStr?`${startStr} – ${endStr}`:startStr;
-  const isPast=isPastJob(j);
-  const barColors={white:'var(--white-bar)',yellow:'var(--yellow-bar)',green:'var(--green-bar)',pink:'var(--pink-bar)',blue:'var(--blue-bar)',orange:'var(--orange-bar)'};
-  pop.innerHTML=`
-    <div class="pop-color-bar" style="background:${barColors[color]||'var(--line-strong)'}"></div>
-    <div class="pop-jobno">${xe(j.JobNumber||'—')}</div>
-    <div class="pop-suburb">${xe(j.Suburb||j.Title||'—')}</div>
-    <div class="pop-divider"></div>
-    <div class="pop-row"><span class="pop-label">Date</span><span class="pop-val">${dateRange}</span></div>
-    <div class="pop-row"><span class="pop-label">Machine</span><span class="pop-val">${xe(j.Machine||'—')}</span></div>
-    ${crew?`<div class="pop-row"><span class="pop-label">Crew</span><span class="pop-val">${xe(crew)}</span></div>`:''}
-    <div class="pop-row"><span class="pop-label">Status</span><span class="pop-val"><span class="list-badge ${badgeCls}" style="font-size:10.5px;padding:2px 7px">${xe(status||'—')}</span></span></div>
-    ${j.Notes?`<div class="pop-row"><span class="pop-label">Notes</span><span class="pop-val" style="color:var(--ink-3)">${xe(j.Notes)}</span></div>`:''}`;
-
-  // Position: prefer above the tile, flip below if near top edge
-  const chip=e.currentTarget;
-  const rect=chip.getBoundingClientRect();
-  const popW=268, popH=260;
-  // Horizontal: centre on tile, clamp to viewport
-  let left=rect.left+rect.width/2-popW/2;
-  left=Math.max(8,Math.min(left,window.innerWidth-popW-8));
-  // Vertical: above by default, flip below if not enough space
-  let top=rect.top-popH-8;
-  if(top<8) top=rect.bottom+8;
-  pop.style.left=left+'px';
-  pop.style.top=top+'px';
-  pop.classList.add('visible');
-}
-function schedHidePopover() {
-  _popHideTimer=setTimeout(()=>{
-    const pop=document.getElementById('job-popover');
-    if(pop) pop.classList.remove('visible');
-  },180);
-}
-function cancelHidePopover() { clearTimeout(_popHideTimer); }
-function closePopoverAndEdit(id) {
-  const pop=document.getElementById('job-popover');
-  if(pop) pop.classList.remove('visible');
-  openEdit(id);
-}
-function closePopoverAndCopy(id) {
-  const pop=document.getElementById('job-popover');
-  if(pop) pop.classList.remove('visible');
-  openCopyModal(id,null);
-}
 
 function setView(v) {
   currentView=v; viewOffset=0;
