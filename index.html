@@ -270,7 +270,7 @@ button { font:inherit; color:inherit; cursor:pointer; }
 .job {
   position:relative; border-radius:5px;
   height:36px; display:flex; flex-direction:column; justify-content:center;
-  padding:0 20px 0 10px; gap:1px;
+  padding:0 8px 0 10px; gap:1px;
   cursor:grab; user-select:none; overflow:hidden; flex-shrink:0;
   background:var(--c-bg,#fff); color:var(--c-ink,var(--ink));
   border:1px solid color-mix(in oklch,var(--c-bar,var(--line-strong)) 30%,transparent);
@@ -293,7 +293,8 @@ button { font:inherit; color:inherit; cursor:pointer; }
 .job.no-access .job-suburb, .job.no-access .job-no { color:oklch(0.50 0.20 25); }
 .job .job-people { display:none; }
 .job .person-dot { display:none; }
-.job .status-dot { position:absolute; top:6px; right:6px; width:5px; height:5px; border-radius:999px; flex-shrink:0; }
+.job .crew-initials { display:flex; gap:2px; margin-left:auto; flex-shrink:0; }
+.job .crew-init { width:14px; height:14px; border-radius:50%; background:oklch(0.72 0.15 var(--person-hue,250)); color:#fff; font-size:6.5px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
 
 /* Overflow indicator */
 .cell-overflow {
@@ -325,11 +326,6 @@ button { font:inherit; color:inherit; cursor:pointer; }
   border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; text-align:center;
 }
 .pop-edit-btn:hover { background:oklch(0.44 0.16 255); }
-.job[data-status="confirmed"] .status-dot { background:var(--status-confirmed); }
-.job[data-status="in-progress"] .status-dot { background:var(--status-progress); box-shadow:0 0 0 3px color-mix(in oklch,var(--status-progress) 22%,transparent); }
-.job[data-status="tentative"] .status-dot { border:1.5px dashed color-mix(in oklch,var(--status-tentative) 70%,transparent); }
-.job[data-status="scheduled"] .status-dot { background:var(--status-scheduled); opacity:0.7; }
-.job[data-status="training"] .status-dot { background:var(--status-training); }
 .job[data-color="white"]  { --c-bg:var(--white-bg);  --c-ink:var(--white-ink);  --c-bar:var(--white-bar); }
 .job[data-color="yellow"] { --c-bg:var(--yellow-bg); --c-ink:var(--yellow-ink); --c-bar:var(--yellow-bar); }
 .job[data-color="green"]  { --c-bg:var(--green-bg);  --c-ink:var(--green-ink);  --c-bar:var(--green-bar); }
@@ -346,7 +342,6 @@ button { font:inherit; color:inherit; cursor:pointer; }
 }
 .job:hover .job-copy { opacity:1; }
 .job-copy:hover { background:#fff; }
-.job:hover .status-dot { opacity:0; }
 
 /* ---------- Modal ---------- */
 .modal-scrim {
@@ -1589,10 +1584,12 @@ function renderCal() {
         const suburb=xe(j.Suburb||j.Title||'');
         const jobno=xe(j.JobNumber||'');
         const noAccess=!approved?' no-access':'';
+        const crewSrc=j.CrewText||j.Crew||'';
+        const crewArr=(Array.isArray(crewSrc)?crewSrc:crewSrc.split(/;#|;|,/).map(c=>c.trim())).filter(Boolean);
+        const crewInits=crewArr.length?`<span class="crew-initials">${crewArr.map(n=>`<span class="crew-init" style="--person-hue:${nameHue(n)}" title="${xe(n)}">${xe(nameInitials(n))}</span>`).join('')}</span>`:'';
         h+=`<div class="job${isPast?' past':''}${noAccess}" data-jobid="${j.id}" data-color="${colorSlug}" data-status="${statusSlug}" ${draggable} onmouseenter="showJobPopover(event,'${j.id}')" onmouseleave="schedHidePopover()">`;
-        h+=`<div class="job-head"><span class="job-no">${jobno}</span></div>`;
-        h+=`<span class="job-suburb">${suburb}</span>`;
-        h+=`<span class="status-dot"></span></div>`;
+        h+=`<div class="job-head"><span class="job-no">${jobno}</span>${crewInits}</div>`;
+        h+=`<span class="job-suburb">${suburb}</span></div>`;
       });
       h+=`</div>`;
     });
@@ -2203,8 +2200,7 @@ function renderCrewGrid() {
         h+=`<div class="job${noAccess}" data-jobid="${j.id}" data-color="${colorSlug}" data-status="${statusSlug}">`;
         h+=`<div class="job-head"><span class="job-no">${jobno}</span></div>`;
         h+=`<span class="job-suburb">${suburb}</span>`;
-        h+=`${machine?`<span class="job-machine">${machine}</span>`:''}`;
-        h+=`<span class="status-dot"></span></div>`;
+        h+=`${machine?`<span class="job-machine">${machine}</span>`:''}</div>`;
       });
       h+=`</div>`;
     });
