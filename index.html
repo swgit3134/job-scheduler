@@ -1106,6 +1106,7 @@ button { font:inherit; color:inherit; cursor:pointer; }
     <div class="modal-foot">
       <button class="btn danger" id="del-btn" onclick="deleteJob()" style="display:none">&#x1f5d1; Delete</button>
       <div style="display:flex;gap:8px;margin-left:auto">
+        <button class="btn" id="copy-from-edit-btn" onclick="copyFromEdit()" style="display:none">Copy Job</button>
         <button class="btn" onclick="closeModal()">Cancel</button>
         <button class="btn primary" id="save-btn" onclick="saveJob()">Save</button>
       </div>
@@ -1938,6 +1939,7 @@ async function removeCrewMember(name) {
 // ── JOB POPOVER ──────────────────────────────────────────────────
 let _popHideTimer=null;
 function showJobPopover(e,jobId) {
+  if(window.innerWidth<=1024) return; // no hover popover on mobile/tablet
   cancelHidePopover();
   const j=allJobs.find(x=>x.id===jobId); if(!j) return;
   const pop=document.getElementById('job-popover'); if(!pop) return;
@@ -1960,8 +1962,7 @@ function showJobPopover(e,jobId) {
     <div class="pop-row"><span class="pop-label">Machine</span><span class="pop-val">${xe(j.Machine||'—')}</span></div>
     ${crew?`<div class="pop-row"><span class="pop-label">Crew</span><span class="pop-val">${xe(crew)}</span></div>`:''}
     <div class="pop-row"><span class="pop-label">Status</span><span class="pop-val"><span class="list-badge ${badgeCls}" style="font-size:10.5px;padding:2px 7px">${xe(status||'—')}</span></span></div>
-    ${j.Notes?`<div class="pop-row"><span class="pop-label">Notes</span><span class="pop-val" style="color:var(--ink-3)">${xe(j.Notes)}</span></div>`:''}
-    ${!isMobileView()?`<div class="pop-actions">${!isPast?`<button class="pop-edit-btn" onclick="closePopoverAndEdit('${j.id}')">Edit job</button>`:''}<button class="pop-edit-btn" style="background:var(--surface-2);color:var(--ink-2);border:1px solid var(--line)" onclick="closePopoverAndCopy('${j.id}')">Copy job</button></div>`:''}`;
+    ${j.Notes?`<div class="pop-row"><span class="pop-label">Notes</span><span class="pop-val" style="color:var(--ink-3)">${xe(j.Notes)}</span></div>`:''}`;
 
   // Position: prefer above the tile, flip below if near top edge
   const chip=e.currentTarget;
@@ -2339,6 +2340,7 @@ function openNew(machine,dateStr) {
   editId=null;
   document.getElementById('m-title').textContent='New Job';
   document.getElementById('del-btn').style.display='none';
+  document.getElementById('copy-from-edit-btn').style.display='none';
   clearForm();
   if(machine) document.getElementById('f-machine').value=machine;
   if(dateStr) { document.getElementById('f-startdate').value=dateStr; document.getElementById('f-enddate').value=dateStr; }
@@ -2347,11 +2349,17 @@ function openNew(machine,dateStr) {
 }
 function openAddModal(m,d) { openNew(m||'',d||''); }
 
+function copyFromEdit() {
+  const id=editId; if(!id) return;
+  closeModal();
+  openCopyModal(id,null);
+}
 function openEdit(id) {
   const j=allJobs.find(x=>x.id===id); if(!j) return;
   editId=id;
   document.getElementById('m-title').textContent='Edit Job';
   document.getElementById('del-btn').style.display='';
+  document.getElementById('copy-from-edit-btn').style.display='';
   document.getElementById('f-jobnumber').value=j.JobNumber||'';
   document.getElementById('f-status').value=j.Status||'';
   document.getElementById('f-machine').value=j.Machine||'';
