@@ -1077,9 +1077,11 @@ button { font:inherit; color:inherit; cursor:pointer; }
       </div>
     </div>
     <div class="modal-foot">
-      <button class="btn danger" id="del-btn" onclick="deleteJob()" style="display:none">&#x1f5d1; Delete</button>
-      <div style="display:flex;gap:8px;margin-left:auto">
+      <div style="display:flex;gap:8px">
+        <button class="btn danger" id="del-btn" onclick="deleteJob()" style="display:none">&#x1f5d1; Delete</button>
         <button class="btn" id="copy-from-edit-btn" onclick="copyFromEdit()" style="display:none">Copy Job</button>
+      </div>
+      <div style="display:flex;gap:8px;margin-left:auto">
         <button class="btn" onclick="closeModal()">Cancel</button>
         <button class="btn primary" id="save-btn" onclick="saveJob()">Save</button>
       </div>
