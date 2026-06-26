@@ -732,6 +732,13 @@ button { font:inherit; color:inherit; cursor:pointer; }
 }
 .admin-add-btn:hover { background:oklch(0.44 0.16 255); }
 .admin-empty { color:var(--ink-3); font-size:13px; padding:10px 0; }
+.crew-init-input {
+  width:38px; text-align:center; padding:4px 5px; border:1px solid var(--line);
+  border-radius:6px; font-size:12px; font-weight:700; text-transform:uppercase;
+  font-family:var(--font-mono); color:var(--ink); background:var(--surface);
+  letter-spacing:0.05em;
+}
+.crew-init-input:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px oklch(0.48 0.16 255 / 0.12); }
 .cal-type-ph { color:oklch(0.45 0.15 28); font-weight:600; }
 .cal-type-cc { color:oklch(0.40 0.12 235); font-weight:600; }
 
@@ -1590,7 +1597,7 @@ function renderCal() {
         const noAccess=!approved?' no-access':'';
         const crewSrc=j.CrewText||j.Crew||'';
         const crewArr=(Array.isArray(crewSrc)?crewSrc:crewSrc.split(/;#|;|,/).map(c=>c.trim())).filter(Boolean);
-        const crewInits=crewArr.length?`<span class="crew-initials">${crewArr.map(n=>`<span class="crew-init" style="--person-hue:${nameHue(n)}" title="${xe(n)}">${xe(nameInitials(n))}</span>`).join('')}</span>`:'';
+        const crewInits=crewArr.length?`<span class="crew-initials">${crewArr.map(n=>`<span class="crew-init" style="--person-hue:${nameHue(n)}" title="${xe(n)}">${xe(getCrewInitials(n))}</span>`).join('')}</span>`:'';
         h+=`<div class="job${isPast?' past':''}${noAccess}" data-jobid="${j.id}" data-color="${colorSlug}" data-status="${statusSlug}" ${draggable} onmouseenter="showJobPopover(event,'${j.id}')" onmouseleave="schedHidePopover()">`;
         h+=`<div class="job-head"><span class="job-no">${jobno}</span>${crewInits}</div>`;
         h+=`<span class="job-suburb">${suburb}</span></div>`;
@@ -1891,14 +1898,24 @@ async function seedVicHolidays() {
 // ── Manage Crew ──
 async function renderCrewTab() {
   const el=document.getElementById('admin-panel-content');
+  const initMap=getCrewInitialsMap();
   el.innerHTML=`
     <div class="admin-section-title">Crew Members</div>
     <div class="admin-list">
-      ${CREW_LIST.map(name=>`
-        <div class="admin-list-item">
+      ${CREW_LIST.map(name=>{
+        const auto=nameInitials(name);
+        const custom=initMap[name]||'';
+        return `<div class="admin-list-item">
           <span class="item-label">${xe(name)}</span>
-          <button class="admin-remove" onclick="removeCrewMember('${xe(name)}')">✕ Remove</button>
-        </div>`).join('')}
+          <div style="display:flex;align-items:center;gap:8px">
+            <input class="crew-init-input" type="text" maxlength="2" value="${xe(custom)}"
+              placeholder="${xe(auto)}" title="Custom initials (leave blank to auto)"
+              oninput="this.value=this.value.toUpperCase()"
+              onchange="saveCrewInitial('${xe(name)}',this.value)">
+            <button class="admin-remove" onclick="removeCrewMember('${xe(name)}')">✕ Remove</button>
+          </div>
+        </div>`;
+      }).join('')}
     </div>
     <div class="admin-section-title">Add Crew Member</div>
     <div class="admin-add-row">
@@ -2086,7 +2103,7 @@ function buildCrewFilterList() {
   list.innerHTML=CREW_LIST.map(name=>{
     const visible=!hiddenCrew.has(name);
     const hue=nameHue(name);
-    const initials=nameInitials(name);
+    const initials=getCrewInitials(name);
     const id='cfp-'+name.replace(/\s+/g,'_');
     return `<label class="cfp-row" for="${id}">
       <div class="cfp-avatar" style="--person-hue:${hue}">${xe(initials)}</div>
@@ -2111,6 +2128,25 @@ function nameHue(name) {
 function nameInitials(name) {
   const p=name.trim().split(/\s+/);
   return p.length===1?p[0].slice(0,2).toUpperCase():(p[0][0]+p[p.length-1][0]).toUpperCase();
+}
+let _crewInitialsCache=null;
+function getCrewInitialsMap() {
+  if(!_crewInitialsCache) {
+    try { _crewInitialsCache=JSON.parse(localStorage.getItem('crewInitials')||'{}'); } catch(e) { _crewInitialsCache={}; }
+  }
+  return _crewInitialsCache;
+}
+function getCrewInitials(name) {
+  return getCrewInitialsMap()[name]||nameInitials(name);
+}
+function saveCrewInitial(name,value) {
+  const v=value.trim().toUpperCase().slice(0,2);
+  const map=getCrewInitialsMap();
+  if(v) map[name]=v; else delete map[name];
+  localStorage.setItem('crewInitials',JSON.stringify(map));
+  _crewInitialsCache=map;
+  if(currentMode==='grid') renderCal();
+  else if(currentMode==='crew') renderCrewGrid();
 }
 function renderCrewGrid() {
   const grid=document.getElementById('crew-grid');
