@@ -270,7 +270,7 @@ button { font:inherit; color:inherit; cursor:pointer; }
 .job {
   position:relative; border-radius:5px;
   height:36px; display:flex; flex-direction:column; justify-content:center;
-  padding:0 6px 0 6px; gap:1px;
+  padding:0 6px 0 1px; gap:1px;
   cursor:grab; user-select:none; overflow:hidden; flex-shrink:0;
   background:var(--c-bg,#fff); color:var(--c-ink,var(--ink));
   border:1px solid color-mix(in oklch,var(--c-bar,var(--line-strong)) 30%,transparent);
@@ -290,7 +290,7 @@ button { font:inherit; color:inherit; cursor:pointer; }
 .job .job-people { display:none; }
 .job .person-dot { display:none; }
 .job .crew-initials { display:flex; gap:1px; margin-left:auto; flex-shrink:0; }
-.job .crew-init { width:13px; height:13px; border-radius:50%; background:oklch(0.72 0.15 var(--person-hue,250)); color:#fff; font-size:6px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.job .crew-init { font-size:8px; font-weight:700; color:var(--c-ink,var(--ink)); flex-shrink:0; letter-spacing:0.02em; }
 
 /* Overflow indicator */
 .cell-overflow {
