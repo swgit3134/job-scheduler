@@ -1375,38 +1375,21 @@ async function loadStaffDirectory() {
     _staffItems=res.value||[];
     if(!_staffItems.length) return;
 
-    // Log all field names on first load so we can see the schema
-    console.log('StaffDirectory fields:', Object.keys(_staffItems[0].fields||{}));
-
-    // Field name guesses — we'll refine once we see the console output
-    const nameField   = ['Title','FullName','Name','DisplayName','StaffName'].find(f=>_staffItems[0].fields?.[f]!=null) || 'Title';
-    const initField   = ['Initials','ShortName','Abbrev','Code'].find(f=>_staffItems[0].fields?.[f]!=null);
-    const defaultField= ['DefaultVisible','ShowByDefault','Active','IsActive','ScheduleDefault'].find(f=>_staffItems[0].fields?.[f]!=null);
-    const activeField = ['Active','IsActive','Enabled','Status'].find(f=>f!==defaultField&&_staffItems[0].fields?.[f]!=null);
-
-    console.log(`StaffDirectory using: name=${nameField}, initials=${initField||'(auto)'}, default=${defaultField||'(none)'}, active=${activeField||'(none)'}`);
-
-    // Build crew list from active staff
+    // Build crew list from active staff using known StaffDirectory schema
     const staff=_staffItems
-      .filter(i=>{
-        if(!activeField) return true;
-        const v=i.fields[activeField];
-        // treat true bool or "Active"/"Yes" string as active
-        if(typeof v==='boolean') return v;
-        if(typeof v==='string') return /active|yes|true/i.test(v);
-        return true;
-      })
+      .filter(i=>i.fields.IsActive!==false) // IsActive Yes/No column
+      .sort((a,b)=>(a.fields.SortOrder||999)-(b.fields.SortOrder||999))
       .map(i=>({
-        name:(i.fields[nameField]||'').trim(),
-        initials:initField?(i.fields[initField]||'').trim().toUpperCase().slice(0,2):'',
-        isDefault:defaultField!=null?(typeof i.fields[defaultField]==='boolean'?i.fields[defaultField]:/yes|true|active/i.test(String(i.fields[defaultField]||''))):true,
+        name:(i.fields.Title||'').trim(),
+        initials:'', // no Initials column yet — auto-generated
+        isDefault:i.fields.ShowByDefault===true, // ShowByDefault Yes/No column
       }))
       .filter(s=>s.name);
 
     if(!staff.length) return;
 
-    // Update CREW_LIST from StaffDirectory (override localStorage)
-    const names=staff.map(s=>s.name).sort((a,b)=>a.localeCompare(b));
+    // Update CREW_LIST from StaffDirectory (SortOrder controls order)
+    const names=staff.map(s=>s.name);
     CREW_LIST=names;
     try { localStorage.setItem('crewOrder',JSON.stringify(names)); } catch(e){}
 
