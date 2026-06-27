@@ -475,6 +475,26 @@ button { font:inherit; color:inherit; cursor:pointer; }
 .btn.primary:hover { background:oklch(0.42 0.16 255); border-color:oklch(0.42 0.16 255); }
 .btn.danger { background:transparent; border:0; color:oklch(0.52 0.18 25); padding-left:0; padding-right:0; }
 .btn.danger:hover { color:oklch(0.42 0.18 25); }
+/* Conflict dialog */
+.conflict-overlay {
+  display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:2000;
+  align-items:center; justify-content:center;
+}
+.conflict-overlay.open { display:flex; }
+.conflict-dlg {
+  background:var(--surface); border-radius:14px; padding:24px 26px 20px;
+  max-width:480px; width:90%; box-shadow:0 12px 40px rgba(0,0,0,0.22);
+}
+.conflict-dlg h3 { margin:0 0 6px; font-size:15px; color:var(--ink); }
+.conflict-dlg p  { margin:0 0 14px; font-size:13px; color:var(--ink-2); }
+.conflict-list { margin:0 0 18px; padding:0; list-style:none; display:flex; flex-direction:column; gap:6px; }
+.conflict-list li {
+  padding:8px 12px; border-radius:8px; font-size:12.5px;
+  background:oklch(0.97 0.03 28); border:1px solid oklch(0.90 0.08 28);
+  color:oklch(0.35 0.12 28);
+}
+.conflict-list li strong { font-weight:700; }
+.conflict-actions { display:flex; gap:8px; justify-content:flex-end; }
 /* Toast */
 .toast {
   position:fixed; bottom:22px; left:50%; transform:translateX(-50%) translateY(120%);
@@ -1110,6 +1130,19 @@ button { font:inherit; color:inherit; cursor:pointer; }
         <button class="btn" onclick="closeModal()">Cancel</button>
         <button class="btn primary" id="save-btn" onclick="saveJob()">Save</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── CONFLICT DIALOG ───────────────────────────────────────── -->
+<div class="conflict-overlay" id="conflict-overlay">
+  <div class="conflict-dlg">
+    <h3>⚠️ Crew Conflict Detected</h3>
+    <p>The following crew members are already allocated to a different machine on one or more of these dates. Do you want to proceed anyway?</p>
+    <ul class="conflict-list" id="conflict-list"></ul>
+    <div class="conflict-actions">
+      <button class="btn" onclick="closeConflict()">Cancel</button>
+      <button class="btn danger" onclick="proceedDespiteConflict()">Save Anyway</button>
     </div>
   </div>
 </div>
@@ -2556,12 +2589,91 @@ async function updateRegisterStatus(jobNum, status, onlyIfStatus=null) {
   } catch(e) { console.warn('Could not update JobsRegister status:',e.message); }
 }
 
+// ── Crew conflict detection ───────────────────────────────────────
+const CONFLICT_EXEMPT = /yard|leave|tbc|si|site.?insp/i;
+let _conflictResolveFn = null;
+
+function isMachineExempt(machine) {
+  return CONFLICT_EXEMPT.test(machine||'');
+}
+
+function datesInRange(sdStr, edStr) {
+  const dates=[];
+  const start=new Date(sdStr+'T12:00:00'); start.setHours(0,0,0,0);
+  const end=new Date(edStr+'T12:00:00'); end.setHours(0,0,0,0);
+  for(let d=new Date(start);d<=end;d.setDate(d.getDate()+1)) {
+    const dow=d.getDay();
+    if(dow!==0&&dow!==6) dates.push(fdate(d));
+  }
+  return dates;
+}
+
+function checkCrewConflicts(crew, machine, sdStr, edStr) {
+  if(!crew.length || isMachineExempt(machine)) return [];
+  const rangeDates=new Set(datesInRange(sdStr,edStr));
+  const conflicts=[];
+  const machineLower=(machine||'').toLowerCase();
+  crew.forEach(person=>{
+    allJobs.forEach(j=>{
+      if(editId && String(j.id)===String(editId)) return; // skip self
+      if(isMachineExempt(j.Machine)) return;
+      const jMachineLower=(j.Machine||'').toLowerCase();
+      if(jMachineLower===machineLower) return; // same machine — OK
+      const src=j.CrewText||j.Crew||'';
+      const jCrew=(Array.isArray(src)?src:src.split(/;#|;|,/).map(c=>c.trim())).filter(Boolean);
+      if(!jCrew.includes(person)) return;
+      // Find overlapping dates
+      const jStart=j.Start_x0020_Date?j.Start_x0020_Date.split('T')[0]:null;
+      const jEnd=j.End_x0020_Date?j.End_x0020_Date.split('T')[0]:jStart;
+      if(!jStart) return;
+      const overlap=datesInRange(jStart,jEnd).filter(d=>rangeDates.has(d));
+      if(overlap.length) {
+        conflicts.push({person, machine:j.Machine, jobNo:j.JobNumber||j.id, dates:overlap});
+      }
+    });
+  });
+  // Deduplicate by person+machine+job
+  const seen=new Set();
+  return conflicts.filter(c=>{
+    const key=`${c.person}|${c.machine}|${c.jobNo}`;
+    if(seen.has(key)) return false; seen.add(key); return true;
+  });
+}
+
+function showConflictDialog(conflicts) {
+  return new Promise(resolve=>{
+    _conflictResolveFn=resolve;
+    const list=document.getElementById('conflict-list');
+    list.innerHTML=conflicts.map(c=>{
+      const dateStr=c.dates.map(d=>{ const p=d.split('-'); return `${p[2]}/${p[1]}`; }).join(', ');
+      return `<li><strong>${xe(c.person)}</strong> — already on <strong>${xe(c.machine)}</strong> (Job ${xe(c.jobNo)}) on ${xe(dateStr)}</li>`;
+    }).join('');
+    document.getElementById('conflict-overlay').classList.add('open');
+  });
+}
+function closeConflict() {
+  document.getElementById('conflict-overlay').classList.remove('open');
+  if(_conflictResolveFn) { _conflictResolveFn(false); _conflictResolveFn=null; }
+}
+function proceedDespiteConflict() {
+  document.getElementById('conflict-overlay').classList.remove('open');
+  if(_conflictResolveFn) { _conflictResolveFn(true); _conflictResolveFn=null; }
+}
+
 async function saveJob() {
   const machine=document.getElementById('f-machine').value;
   if(!machine) { toast('Please select a machine','error'); return; }
   const sd=document.getElementById('f-startdate').value;
   const ed=document.getElementById('f-enddate').value;
   if(!sd||!ed) { toast('Please select start and end dates','error'); return; }
+
+  // Conflict check before saving
+  const conflicts=checkCrewConflicts(selectedCrew, machine, sd, ed);
+  if(conflicts.length) {
+    const proceed=await showConflictDialog(conflicts);
+    if(!proceed) return;
+  }
+
   const splitByDay=document.getElementById('f-split-by-day').checked;
   const btn=document.getElementById('save-btn');
   btn.textContent='Saving…'; btn.disabled=true;
