@@ -1355,6 +1355,7 @@ async function gfetch(method,path,body) {
 async function getSite() { if(!siteId) siteId=(await gfetch('GET',`/sites/${SITE_URL}`)).id; return siteId; }
 let _spCrewDefaults=null; // defaults loaded from SharePoint
 let _staffItems=[];       // raw StaffDirectory items
+let _staffMap=new Map();  // displayName → {title, shortName} for fuzzy matching
 
 async function loadStaffDirectory() {
   try {
@@ -1368,15 +1369,33 @@ async function loadStaffDirectory() {
       .filter(i=>i.fields.IsActive!==false)
       .sort((a,b)=>(a.fields.SortOrder||999)-(b.fields.SortOrder||999));
 
-    // CREW_LIST = only IsFieldCrew members (shown in job booking dropdown)
+    // CREW_LIST = only IsFieldCrew members; use ShortName as display name when set
     const fieldCrew=allActive.filter(i=>i.fields.IsFieldCrew===true);
     if(!fieldCrew.length) return;
-    const names=fieldCrew.map(i=>(i.fields.Title||'').trim()).filter(Boolean);
+
+    // Build _staffMap: displayName → {title, shortName} for crewNameMatch
+    _staffMap=new Map();
+    fieldCrew.forEach(i=>{
+      const title=(i.fields.Title||'').trim();
+      const shortName=(i.fields.ShortName||'').trim();
+      const displayName=shortName||title;
+      if(displayName) _staffMap.set(displayName,{title,shortName});
+    });
+
+    const names=fieldCrew.map(i=>{
+      const title=(i.fields.Title||'').trim();
+      const shortName=(i.fields.ShortName||'').trim();
+      return shortName||title;
+    }).filter(Boolean);
     CREW_LIST=names;
     try { localStorage.setItem('crewOrder',JSON.stringify(names)); } catch(e){}
 
     // ShowByDefault drives My Schedule defaults (shared across all users)
-    const defaultNames=fieldCrew.filter(i=>i.fields.ShowByDefault===true).map(i=>(i.fields.Title||'').trim()).filter(Boolean);
+    const defaultNames=fieldCrew.filter(i=>i.fields.ShowByDefault===true).map(i=>{
+      const title=(i.fields.Title||'').trim();
+      const shortName=(i.fields.ShortName||'').trim();
+      return shortName||title;
+    }).filter(Boolean);
     _spCrewDefaults=new Set(defaultNames);
     try { localStorage.setItem('crewDefaults',JSON.stringify(defaultNames)); } catch(e){}
 
@@ -2021,8 +2040,8 @@ async function renderCrewTab() {
     <div style="font-size:11.5px;color:var(--ink-3);padding:0 0 10px 0">
       Managed via StaffDirectory list. <b>Field Crew</b> = appears in job booking dropdown. <b>My Schedule</b> = shown by default in schedule view.
     </div>
-    <div style="display:grid;grid-template-columns:1fr 52px 72px 84px;gap:6px;align-items:center;padding:0 12px 6px;font-size:10.5px;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;color:var(--ink-3)">
-      <span>Name</span><span style="text-align:center">Initials</span><span style="text-align:center">Field Crew</span><span style="text-align:center">My Schedule</span>
+    <div style="display:grid;grid-template-columns:1fr 90px 52px 72px 84px;gap:6px;align-items:center;padding:0 12px 6px;font-size:10.5px;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;color:var(--ink-3)">
+      <span>Name</span><span>Short Name</span><span style="text-align:center">Initials</span><span style="text-align:center">Field Crew</span><span style="text-align:center">My Schedule</span>
     </div>
     <div class="admin-list">
       ${activeStaff.map(i=>{
@@ -2030,14 +2049,19 @@ async function renderCrewTab() {
         const spId=i.id;
         const isField=i.fields.IsFieldCrew===true;
         const isDef=i.fields.ShowByDefault===true;
-        const auto=nameInitials(name);
-        const custom=initMap[name]||'';
-        return `<div class="admin-list-item" style="display:grid;grid-template-columns:1fr 52px 72px 84px;gap:6px;align-items:center;padding:6px 12px">
+        const shortName=(i.fields.ShortName||'').trim();
+        const displayName=shortName||name;
+        const auto=nameInitials(displayName);
+        const custom=initMap[displayName]||initMap[name]||'';
+        return `<div class="admin-list-item" style="display:grid;grid-template-columns:1fr 90px 52px 72px 84px;gap:6px;align-items:center;padding:6px 12px">
           <span class="item-label">${xe(name)}</span>
+          <input class="crew-init-input" type="text" value="${xe(shortName)}"
+            placeholder="—" title="Short display name (optional)"
+            onchange="saveShortName('${xe(spId)}','${xe(name)}',this.value)">
           <input class="crew-init-input" type="text" maxlength="2" value="${xe(custom)}"
             placeholder="${xe(auto)}" title="Custom initials"
             oninput="this.value=this.value.toUpperCase()"
-            onchange="saveCrewInitial('${xe(name)}',this.value)">
+            onchange="saveCrewInitial('${xe(displayName)}',this.value)">
           <label style="display:flex;justify-content:center;cursor:pointer" title="Show in job booking dropdown">
             <input type="checkbox" ${isField?'checked':''} style="width:15px;height:15px;accent-color:var(--accent)"
               onchange="toggleStaffField('${spId}','IsFieldCrew',this.checked)">
@@ -2056,13 +2080,38 @@ async function toggleStaffField(spId, field, value) {
   try {
     const sid=await getSite();
     await gfetch('PATCH',`/sites/${sid}/lists/${STAFF_LIST}/items/${spId}/fields`,{[field]:value});
-    // Update cached _staffItems
     const item=_staffItems.find(i=>i.id===spId);
     if(item) item.fields[field]=value;
-    // Rebuild CREW_LIST and defaults from updated cache
     await loadStaffDirectory();
     renderCrewLegendBar();
     toast(`Updated ✓`);
+  } catch(e) { toast('Error: '+e.message,'error'); }
+}
+async function saveShortName(spId, title, value) {
+  try {
+    const trimmed=value.trim();
+    const sid=await getSite();
+    await gfetch('PATCH',`/sites/${sid}/lists/${STAFF_LIST}/items/${spId}/fields`,{ShortName:trimmed});
+    const item=_staffItems.find(i=>i.id===spId);
+    if(item) item.fields.ShortName=trimmed;
+    // Migrate initials cache key: old display name → new display name
+    const oldDisplay=_staffMap.get(title)?.shortName||title;
+    const newDisplay=trimmed||title;
+    if(oldDisplay!==newDisplay) {
+      try {
+        const cache=JSON.parse(localStorage.getItem('crewInitials')||'{}');
+        if(cache[oldDisplay]&&!cache[newDisplay]) {
+          cache[newDisplay]=cache[oldDisplay];
+          delete cache[oldDisplay];
+          localStorage.setItem('crewInitials',JSON.stringify(cache));
+        }
+      } catch(e){}
+    }
+    _crewInitialsCache=null;
+    await loadStaffDirectory();
+    renderCrewLegendBar();
+    renderCrewTab();
+    toast(`Short name updated ✓`);
   } catch(e) { toast('Error: '+e.message,'error'); }
 }
 async function saveCrewChoices(list) {
@@ -2223,9 +2272,20 @@ function crewNameMatch(jobEntry, personName) {
   const j=jobEntry.trim().toLowerCase();
   const p=personName.trim().toLowerCase();
   if(j===p) return true;
-  const parts=p.split(/\s+/);
-  // jobEntry is first name or last name of personName
-  return parts.some(part=>j===part);
+  // check first/last name parts of personName (display name)
+  if(p.split(/\s+/).some(part=>j===part)) return true;
+  // if personName is a ShortName, also match against the full Title and its parts
+  const info=_staffMap.get(personName);
+  if(info) {
+    const t=info.title.trim().toLowerCase();
+    if(j===t) return true;
+    if(t.split(/\s+/).some(part=>j===part)) return true;
+    if(info.shortName) {
+      const sn=info.shortName.trim().toLowerCase();
+      if(j===sn) return true;
+    }
+  }
+  return false;
 }
 function nameInitials(name) {
   const p=name.trim().split(/\s+/);
