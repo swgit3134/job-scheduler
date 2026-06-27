@@ -1570,7 +1570,7 @@ function renderCal() {
       (Array.isArray(src)?src:src.split(/;#|;|,/).map(c=>c.trim())).filter(Boolean).forEach(n=>allocatedCrew.add(n));
     });
     const unallocCount=defaultCrew.filter(n=>!allocatedCrew.has(n)).length;
-    const unallocBadge=defaultCrew.length>0?`<div class="unalloc-badge" title="${unallocCount} of ${defaultCrew.length} crew unallocated">${unallocCount} free</div>`:'';
+    const unallocBadge=defaultCrew.length>0?`<div class="unalloc-badge" title="${unallocCount} of ${defaultCrew.length} crew unallocated">${unallocCount} Available</div>`:'';
     h+=`<div class="${cls}"><div class="dow">${DAYS[d.getDay()]}</div><div class="dom">${d.getDate()}<span class="mo">${MONTHS[d.getMonth()]}</span></div>${ph?`<div class="ph-label">${ph}</div>`:unallocBadge}</div>`;
   });
   h+=`</div>`;
