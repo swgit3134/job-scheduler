@@ -2188,27 +2188,11 @@ function renderCrewGrid() {
       ${hasHidden?`${CREW_LIST.length-hiddenCount} of ${CREW_LIST.length}`:'All crew'}
     </button>
   </div>`;
-  const defCrewSetCG=getCrewDefaultSet();
-  const defaultCrewCG=CREW_LIST.filter(n=>defCrewSetCG.has(n));
-
   dates.forEach((d,i)=>{
     const firstOfWeek=d._weekIndex>0&&i%5===0;
     const ph=isHoliday(d);
     const cls=['day-head',isToday(d)?'today':'',firstOfWeek?'week-start':'',ph?'holiday':''].filter(Boolean).join(' ');
-    const allocatedCG=new Set();
-    allJobs.forEach(j=>{
-      if(!jobOnDate(j,d)) return;
-      const src=j.CrewText||j.Crew||'';
-      (Array.isArray(src)?src:src.split(/;#|;|,/).map(c=>c.trim())).filter(Boolean).forEach(n=>allocatedCG.add(n));
-    });
-    const unallocCG=defaultCrewCG.filter(n=>!allocatedCG.has(n));
-    const pillsHtml=unallocCG.length
-      ? `<div style="display:flex;flex-wrap:wrap;gap:2px;margin-top:3px">${unallocCG.map(n=>{
-          const hue=nameHue(n); const inits=getCrewInitials(n);
-          return `<div class="legend-bubble" style="width:16px;height:16px;font-size:6.5px;background:oklch(0.88 0.08 ${hue});border:1px solid oklch(0.76 0.12 ${hue});color:oklch(0.28 0.08 ${hue})" title="${xe(n)}">${xe(inits)}</div>`;
-        }).join('')}</div>`
-      : '';
-    h+=`<div class="${cls}"><div class="dow">${DAYS[d.getDay()]}</div><div class="dom">${d.getDate()}<span class="mo">${MONTHS[d.getMonth()]}</span></div>${ph?`<div class="ph-label">${ph}</div>`:pillsHtml}</div>`;
+    h+=`<div class="${cls}"><div class="dow">${DAYS[d.getDay()]}</div><div class="dom">${d.getDate()}<span class="mo">${MONTHS[d.getMonth()]}</span></div>${ph?`<div class="ph-label">${ph}</div>`:''}</div>`;
   });
   h+=`</div>`;
 
