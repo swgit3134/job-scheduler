@@ -1375,36 +1375,22 @@ async function loadStaffDirectory() {
     _staffItems=res.value||[];
     if(!_staffItems.length) return;
 
-    // Build crew list from active staff using known StaffDirectory schema
-    const staff=_staffItems
-      .filter(i=>i.fields.IsActive!==false) // IsActive Yes/No column
-      .sort((a,b)=>(a.fields.SortOrder||999)-(b.fields.SortOrder||999))
-      .map(i=>({
-        name:(i.fields.Title||'').trim(),
-        initials:'', // no Initials column yet — auto-generated
-        isDefault:i.fields.ShowByDefault===true, // ShowByDefault Yes/No column
-      }))
-      .filter(s=>s.name);
+    // Build from active staff sorted by SortOrder
+    const allActive=_staffItems
+      .filter(i=>i.fields.IsActive!==false)
+      .sort((a,b)=>(a.fields.SortOrder||999)-(b.fields.SortOrder||999));
 
-    if(!staff.length) return;
-
-    // Update CREW_LIST from StaffDirectory (SortOrder controls order)
-    const names=staff.map(s=>s.name);
+    // CREW_LIST = only IsFieldCrew members (shown in job booking dropdown)
+    const fieldCrew=allActive.filter(i=>i.fields.IsFieldCrew===true);
+    if(!fieldCrew.length) return;
+    const names=fieldCrew.map(i=>(i.fields.Title||'').trim()).filter(Boolean);
     CREW_LIST=names;
     try { localStorage.setItem('crewOrder',JSON.stringify(names)); } catch(e){}
 
-    // Update initials cache from StaffDirectory
-    const initMap=getCrewInitialsMap();
-    let initialsChanged=false;
-    staff.forEach(s=>{ if(s.initials&&!initMap[s.name]){ initMap[s.name]=s.initials; initialsChanged=true; } });
-    if(initialsChanged){ localStorage.setItem('crewInitials',JSON.stringify(initMap)); _crewInitialsCache=initMap; }
-
-    // Update defaults from StaffDirectory (shared across all users)
-    const defaultNames=staff.filter(s=>s.isDefault).map(s=>s.name);
-    if(defaultNames.length) {
-      _spCrewDefaults=new Set(defaultNames);
-      try { localStorage.setItem('crewDefaults',JSON.stringify(defaultNames)); } catch(e){}
-    }
+    // ShowByDefault drives My Schedule defaults (shared across all users)
+    const defaultNames=fieldCrew.filter(i=>i.fields.ShowByDefault===true).map(i=>(i.fields.Title||'').trim()).filter(Boolean);
+    _spCrewDefaults=new Set(defaultNames);
+    try { localStorage.setItem('crewDefaults',JSON.stringify(defaultNames)); } catch(e){}
 
   } catch(e) { console.warn('StaffDirectory load failed:',e.message); }
 }
@@ -2033,37 +2019,63 @@ function toggleCrewDefault(name) {
 }
 async function renderCrewTab() {
   const el=document.getElementById('admin-panel-content');
+  if(_staffItems.length===0) {
+    el.innerHTML='<div class="admin-empty">Loading staff directory…</div>';
+    await loadStaffDirectory();
+  }
   const initMap=getCrewInitialsMap();
-  const defSet=getCrewDefaultSet();
+  const activeStaff=_staffItems
+    .filter(i=>i.fields.IsActive!==false)
+    .sort((a,b)=>(a.fields.SortOrder||999)-(b.fields.SortOrder||999));
+
   el.innerHTML=`
-    <div class="admin-section-title">Crew Members</div>
-    <div style="font-size:11.5px;color:var(--ink-3);padding:0 0 8px 0">Check the box to show a crew member by default in My Schedule view.</div>
+    <div class="admin-section-title">Staff Directory</div>
+    <div style="font-size:11.5px;color:var(--ink-3);padding:0 0 10px 0">
+      Managed via StaffDirectory list. <b>Field Crew</b> = appears in job booking dropdown. <b>My Schedule</b> = shown by default in schedule view.
+    </div>
+    <div style="display:grid;grid-template-columns:1fr auto auto auto;gap:6px;align-items:center;padding:0 4px 6px;font-size:10.5px;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;color:var(--ink-3)">
+      <span>Name</span><span style="text-align:center">Initials</span><span style="text-align:center">Field Crew</span><span style="text-align:center;white-space:nowrap">My Schedule</span>
+    </div>
     <div class="admin-list">
-      ${CREW_LIST.map(name=>{
+      ${activeStaff.map(i=>{
+        const name=(i.fields.Title||'').trim();
+        const spId=i.id;
+        const isField=i.fields.IsFieldCrew===true;
+        const isDef=i.fields.ShowByDefault===true;
         const auto=nameInitials(name);
         const custom=initMap[name]||'';
-        const isDefault=defSet.has(name);
-        return `<div class="admin-list-item">
-          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;flex:1;min-width:0">
-            <input type="checkbox" ${isDefault?'checked':''} onchange="toggleCrewDefault('${xe(name)}')"
-              style="width:15px;height:15px;cursor:pointer;accent-color:var(--accent)">
-            <span class="item-label">${xe(name)}</span>
+        return `<div class="admin-list-item" style="display:grid;grid-template-columns:1fr auto auto auto;gap:8px;align-items:center">
+          <span class="item-label">${xe(name)}</span>
+          <input class="crew-init-input" type="text" maxlength="2" value="${xe(custom)}"
+            placeholder="${xe(auto)}" title="Custom initials"
+            oninput="this.value=this.value.toUpperCase()"
+            onchange="saveCrewInitial('${xe(name)}',this.value)">
+          <label style="display:flex;justify-content:center;cursor:pointer" title="Show in job booking dropdown">
+            <input type="checkbox" ${isField?'checked':''} style="width:15px;height:15px;accent-color:var(--accent)"
+              onchange="toggleStaffField('${spId}','IsFieldCrew',this.checked)">
           </label>
-          <div style="display:flex;align-items:center;gap:8px">
-            <input class="crew-init-input" type="text" maxlength="2" value="${xe(custom)}"
-              placeholder="${xe(auto)}" title="Custom initials (leave blank to auto)"
-              oninput="this.value=this.value.toUpperCase()"
-              onchange="saveCrewInitial('${xe(name)}',this.value)">
-            <button class="admin-remove" onclick="removeCrewMember('${xe(name)}')">✕ Remove</button>
-          </div>
+          <label style="display:flex;justify-content:center;cursor:pointer" title="Show by default in My Schedule">
+            <input type="checkbox" ${isDef?'checked':''} style="width:15px;height:15px;accent-color:var(--accent)"
+              onchange="toggleStaffField('${spId}','ShowByDefault',this.checked)">
+          </label>
         </div>`;
       }).join('')}
     </div>
-    <div class="admin-section-title">Add Crew Member</div>
-    <div class="admin-add-row">
-      <input id="new-crew-name" type="text" placeholder="Full name" onkeydown="if(event.key==='Enter')addCrewMember()">
-      <button class="admin-add-btn" onclick="addCrewMember()">Add</button>
-    </div>`;
+    <div style="font-size:11px;color:var(--ink-3);margin-top:8px">To add or remove staff, edit the StaffDirectory list in SharePoint.</div>`;
+}
+
+async function toggleStaffField(spId, field, value) {
+  try {
+    const sid=await getSite();
+    await gfetch('PATCH',`/sites/${sid}/lists/${STAFF_LIST}/items/${spId}/fields`,{[field]:value});
+    // Update cached _staffItems
+    const item=_staffItems.find(i=>i.id===spId);
+    if(item) item.fields[field]=value;
+    // Rebuild CREW_LIST and defaults from updated cache
+    await loadStaffDirectory();
+    renderCrewLegendBar();
+    toast(`Updated ✓`);
+  } catch(e) { toast('Error: '+e.message,'error'); }
 }
 async function saveCrewChoices(list) {
   // Persist locally so changes survive refresh (crewOrder is what CREW_LIST reads on boot)
