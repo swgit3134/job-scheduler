@@ -1178,9 +1178,10 @@ const CLIENT_ID = 'b2580766-8f12-4e30-8180-113536a3bd5d';
 const TENANT_ID = '4ef29fa0-9468-4620-8514-1cf4538b9702';
 const SITE_URL  = 'statewidedrilling.sharepoint.com:/sites/AppsPortal:';
 const LIST_NAME     = 'JobScheduler';
-const REGISTER_LIST = '02bbdf28-3c0b-49b8-affb-b91b28a5ee19'; // JobsRegister
-const ADMINS_LIST   = 'd08fb712-f4dd-4eb1-aefb-22ccfef435d8'; // SWG_Admins
-const CALENDAR_LIST = 'd29c1d34-383a-4d37-b1e1-cfc42cac6f61'; // SWG_Calendar
+const REGISTER_LIST  = '02bbdf28-3c0b-49b8-affb-b91b28a5ee19'; // JobsRegister
+const ADMINS_LIST    = 'd08fb712-f4dd-4eb1-aefb-22ccfef435d8'; // SWG_Admins
+const CALENDAR_LIST  = 'd29c1d34-383a-4d37-b1e1-cfc42cac6f61'; // SWG_Calendar
+const STAFF_LIST     = 'StaffDirectory'; // Staff directory list (by name)
 
 const DAYS        = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const MONTHS      = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -1364,7 +1365,66 @@ async function gfetch(method,path,body) {
   return r.status===204?{}:r.json();
 }
 async function getSite() { if(!siteId) siteId=(await gfetch('GET',`/sites/${SITE_URL}`)).id; return siteId; }
-let _spCrewDefaults=null; // defaults loaded from SharePoint column description
+let _spCrewDefaults=null; // defaults loaded from SharePoint
+let _staffItems=[];       // raw StaffDirectory items
+
+async function loadStaffDirectory() {
+  try {
+    const sid=await getSite();
+    const res=await gfetch('GET',`/sites/${sid}/lists/${STAFF_LIST}/items?$expand=fields&$top=500&$select=id,fields`);
+    _staffItems=res.value||[];
+    if(!_staffItems.length) return;
+
+    // Log all field names on first load so we can see the schema
+    console.log('StaffDirectory fields:', Object.keys(_staffItems[0].fields||{}));
+
+    // Field name guesses — we'll refine once we see the console output
+    const nameField   = ['Title','FullName','Name','DisplayName','StaffName'].find(f=>_staffItems[0].fields?.[f]!=null) || 'Title';
+    const initField   = ['Initials','ShortName','Abbrev','Code'].find(f=>_staffItems[0].fields?.[f]!=null);
+    const defaultField= ['DefaultVisible','ShowByDefault','Active','IsActive','ScheduleDefault'].find(f=>_staffItems[0].fields?.[f]!=null);
+    const activeField = ['Active','IsActive','Enabled','Status'].find(f=>f!==defaultField&&_staffItems[0].fields?.[f]!=null);
+
+    console.log(`StaffDirectory using: name=${nameField}, initials=${initField||'(auto)'}, default=${defaultField||'(none)'}, active=${activeField||'(none)'}`);
+
+    // Build crew list from active staff
+    const staff=_staffItems
+      .filter(i=>{
+        if(!activeField) return true;
+        const v=i.fields[activeField];
+        // treat true bool or "Active"/"Yes" string as active
+        if(typeof v==='boolean') return v;
+        if(typeof v==='string') return /active|yes|true/i.test(v);
+        return true;
+      })
+      .map(i=>({
+        name:(i.fields[nameField]||'').trim(),
+        initials:initField?(i.fields[initField]||'').trim().toUpperCase().slice(0,2):'',
+        isDefault:defaultField!=null?(typeof i.fields[defaultField]==='boolean'?i.fields[defaultField]:/yes|true|active/i.test(String(i.fields[defaultField]||''))):true,
+      }))
+      .filter(s=>s.name);
+
+    if(!staff.length) return;
+
+    // Update CREW_LIST from StaffDirectory (override localStorage)
+    const names=staff.map(s=>s.name).sort((a,b)=>a.localeCompare(b));
+    CREW_LIST=names;
+    try { localStorage.setItem('crewOrder',JSON.stringify(names)); } catch(e){}
+
+    // Update initials cache from StaffDirectory
+    const initMap=getCrewInitialsMap();
+    let initialsChanged=false;
+    staff.forEach(s=>{ if(s.initials&&!initMap[s.name]){ initMap[s.name]=s.initials; initialsChanged=true; } });
+    if(initialsChanged){ localStorage.setItem('crewInitials',JSON.stringify(initMap)); _crewInitialsCache=initMap; }
+
+    // Update defaults from StaffDirectory (shared across all users)
+    const defaultNames=staff.filter(s=>s.isDefault).map(s=>s.name);
+    if(defaultNames.length) {
+      _spCrewDefaults=new Set(defaultNames);
+      try { localStorage.setItem('crewDefaults',JSON.stringify(defaultNames)); } catch(e){}
+    }
+
+  } catch(e) { console.warn('StaffDirectory load failed:',e.message); }
+}
 
 async function loadFieldMap() {
   try {
@@ -1425,7 +1485,7 @@ async function onIn(acc) {
   const av=document.getElementById('user-avatar'); if(av) av.textContent=initials;
   currentUserEmail=(acc.username||acc.idTokenClaims?.preferred_username||'').toLowerCase();
   try { await token(); } catch(e) { console.warn('Token pre-warm:',e.message); }
-  requestAnimationFrame(()=>loadFieldMap().then(()=>{ renderCrewLegendBar(); return Promise.all([checkAdminStatus(),loadCalendarEntries()]); }).then(()=>{ loadJobs(); startAutoRefresh(); }));
+  requestAnimationFrame(()=>loadFieldMap().then(()=>loadStaffDirectory()).then(()=>{ renderCrewLegendBar(); return Promise.all([checkAdminStatus(),loadCalendarEntries()]); }).then(()=>{ loadJobs(); startAutoRefresh(); }));
 }
 
 // ── HELPERS ──────────────────────────────────────────────────────
