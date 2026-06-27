@@ -844,7 +844,7 @@ button { font:inherit; color:inherit; cursor:pointer; }
     </div>
     <div class="header-right">
       <div class="refresh-info">
-        <span id="unscheduled-count" style="display:none">Jobs not scheduled <strong id="unscheduled-num">0</strong></span>
+        <span id="unscheduled-count">Jobs not scheduled <strong id="unscheduled-num">…</strong></span>
         Last refreshed<span class="stamp" id="last-refresh">—</span>
       </div>
       <button class="icon-btn" id="admin-btn" onclick="openAdminPanel()" title="Admin settings">
@@ -2478,15 +2478,26 @@ function onJobNumberInput(val) {
 }
 
 async function loadUnscheduledCount() {
+  const ucEl=document.getElementById('unscheduled-count');
+  const unumEl=document.getElementById('unscheduled-num');
+  if(ucEl) ucEl.style.display='block';
+  if(unumEl) unumEl.textContent='…';
   try {
     const sid=await getSite();
-    const filter=encodeURIComponent("fields/Status eq 'Fieldwork to be booked'");
-    const res=await gfetch('GET',`/sites/${sid}/lists/${REGISTER_LIST}/items?$expand=fields&$select=id,fields/Status&$filter=${filter}&$top=999`);
-    const count=(res.value||[]).length;
-    const ucEl=document.getElementById('unscheduled-count');
-    const unumEl=document.getElementById('unscheduled-num');
-    if(ucEl&&unumEl){ unumEl.textContent=count; ucEl.style.display=count>0?'block':'none'; }
-  } catch(e) { console.warn('loadUnscheduledCount:',e.message); }
+    // Fetch all register items and filter client-side to avoid OData field-name issues
+    const res=await gfetch('GET',`/sites/${sid}/lists/${REGISTER_LIST}/items?$expand=fields&$top=2000&$select=id,fields`);
+    const items=res.value||[];
+    const count=items.filter(i=>{
+      const s=(i.fields?.Status||i.fields?.status||'').toLowerCase();
+      return s.includes('to be booked');
+    }).length;
+    if(unumEl) unumEl.textContent=count;
+    // log field names on first load to help debug if still 0
+    if(items.length>0) console.log('Register first item fields:',Object.keys(items[0].fields||{}));
+  } catch(e) {
+    console.warn('loadUnscheduledCount:',e.message);
+    if(unumEl) unumEl.textContent='?';
+  }
 }
 async function fetchRegisterItems(sid) {
   const res=await gfetch('GET',`/sites/${sid}/lists/${REGISTER_LIST}/items?$expand=fields&$top=2000&$select=id,fields`);
