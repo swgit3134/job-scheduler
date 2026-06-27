@@ -1374,13 +1374,21 @@ async function loadStaffDirectory() {
     if(!fieldCrew.length) return;
 
     // Build _staffMap: displayName → {title, shortName} for crewNameMatch
+    // Also build initials cache from SP Initials field (source of truth)
     _staffMap=new Map();
+    const spInitials={};
     fieldCrew.forEach(i=>{
       const title=(i.fields.Title||'').trim();
       const shortName=(i.fields.ShortName||'').trim();
       const displayName=shortName||title;
       if(displayName) _staffMap.set(displayName,{title,shortName});
+      const inits=(i.fields.Initials||'').trim().toUpperCase();
+      if(inits&&displayName) spInitials[displayName]=inits;
     });
+    if(Object.keys(spInitials).length) {
+      try { localStorage.setItem('crewInitials',JSON.stringify(spInitials)); } catch(e){}
+      _crewInitialsCache=spInitials;
+    }
 
     const names=fieldCrew.map(i=>{
       const title=(i.fields.Title||'').trim();
@@ -2043,7 +2051,6 @@ async function renderCrewTab() {
     el.innerHTML='<div class="admin-empty">Loading staff directory…</div>';
     await loadStaffDirectory();
   }
-  const initMap=getCrewInitialsMap();
   const activeStaff=_staffItems
     .filter(i=>i.fields.IsActive!==false)
     .sort((a,b)=>(a.fields.SortOrder||999)-(b.fields.SortOrder||999));
@@ -2064,18 +2071,18 @@ async function renderCrewTab() {
         const isDef=i.fields.ShowByDefault===true;
         const shortName=(i.fields.ShortName||'').trim();
         const displayName=shortName||name;
-        const auto=nameInitials(displayName);
-        const custom=initMap[displayName]||initMap[name]||'';
+        const spInits=(i.fields.Initials||'').trim().toUpperCase();
+        const autoInits=nameInitials(displayName);
         return `<div class="admin-list-item" style="display:grid;grid-template-columns:1fr 130px 52px 72px 84px;gap:6px;align-items:center;padding:6px 12px">
           <span class="item-label">${xe(name)}</span>
           <input type="text" value="${xe(shortName)}"
             placeholder="—" title="Short display name (optional)"
             style="width:100%;padding:4px 6px;border:1px solid var(--line);border-radius:6px;font-size:12px;font-family:var(--font-mono);color:var(--ink);background:var(--surface);box-sizing:border-box"
             onchange="saveShortName('${xe(spId)}','${xe(name)}',this.value)">
-          <input class="crew-init-input" type="text" maxlength="2" value="${xe(custom)}"
-            placeholder="${xe(auto)}" title="Custom initials"
+          <input class="crew-init-input" type="text" maxlength="2" value="${xe(spInits)}"
+            placeholder="${xe(autoInits)}" title="Custom initials (saved to SharePoint)"
             oninput="this.value=this.value.toUpperCase()"
-            onchange="saveCrewInitial('${xe(displayName)}',this.value)">
+            onchange="toggleStaffField('${xe(spId)}','Initials',this.value.trim().toUpperCase())">
           <label style="display:flex;justify-content:center;cursor:pointer" title="Show in job booking dropdown">
             <input type="checkbox" ${isField?'checked':''} style="width:15px;height:15px;accent-color:var(--accent)"
               onchange="toggleStaffField('${spId}','IsFieldCrew',this.checked)">
