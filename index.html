@@ -1074,19 +1074,7 @@ button { font:inherit; color:inherit; cursor:pointer; }
       <!-- Crew full -->
       <div class="field full" style="position:relative">
         <label>Crew</label>
-        <div id="crew-select-wrap" style="position:relative">
-          <div class="chip-field" onclick="toggleCrewDropdown()">
-            <span id="crew-placeholder" style="color:var(--ink-3);font-size:13px">Select crew members…</span>
-            <span id="crew-selected-text" style="display:none;font-size:13px;color:var(--ink)"></span>
-          </div>
-          <div class="crew-dropdown" id="crew-dropdown">
-            <div style="padding:4px 6px 5px">
-              <input type="text" id="crew-search" onclick="event.stopPropagation()" oninput="filterCrew()" placeholder="Search…"
-                style="width:100%;border:1px solid var(--line);border-radius:6px;padding:5px 8px;font:inherit;font-size:12.5px;outline:none;color:var(--ink);background:var(--surface)">
-            </div>
-            <div id="crew-list"></div>
-          </div>
-        </div>
+        <div id="crew-checkbox-list" style="display:flex;flex-wrap:wrap;gap:6px;padding:4px 0"></div>
       </div>
       <!-- Dates -->
       <div class="field">
@@ -2548,10 +2536,14 @@ function openEdit(id) {
   document.getElementById('f-enddate').value=j.End_x0020_Date?spDateToMelbString(j.End_x0020_Date):'';
   setColorPicker(j.Color||'');
   const crewSource=j.CrewText||j.Crew||'';
-  if(Array.isArray(crewSource)) selectedCrew=crewSource.filter(Boolean);
-  else if(crewSource) selectedCrew=crewSource.split(/;#|;|,/).map(c=>c.trim()).filter(Boolean);
-  else selectedCrew=[];
-  updateCrewDisplay();
+  const rawCrew=Array.isArray(crewSource)?crewSource.filter(Boolean)
+    :(crewSource?crewSource.split(/;#|;|,/).map(c=>c.trim()).filter(Boolean):[]);
+  // Map old short names to current full names from CREW_LIST
+  selectedCrew=rawCrew.map(entry=>{
+    const match=CREW_LIST.find(n=>crewNameMatch(entry,n)||n===entry);
+    return match||entry;
+  }).filter((v,i,a)=>a.indexOf(v)===i); // dedupe
+  renderCrewCheckboxes();
   document.getElementById('f-split-by-day').checked=false;
   handleDateChange();
   document.getElementById('modal-bg').classList.add('open');
@@ -2564,11 +2556,7 @@ function clearForm() {
   document.getElementById('f-split-by-day').checked=false;
   ['f-ca','f-bk'].forEach(id=>document.getElementById(id).checked=false);
   selectedCrew=[];
-  // Always close crew dropdown so it doesn't cover subsequent fields
-  const dd=document.getElementById('crew-dropdown');
-  if(dd) dd.style.display='none';
-  document.removeEventListener('click',closeCrewOnOutside);
-  updateCrewDisplay();
+  renderCrewCheckboxes();
   setColorPicker('');
   jrFoundId=null;
   const jrEl=document.getElementById('jr-status'); if(jrEl) jrEl.innerHTML='';
@@ -2576,9 +2564,6 @@ function clearForm() {
 
 function closeModal() {
   document.getElementById('modal-bg').classList.remove('open');
-  const dd=document.getElementById('crew-dropdown');
-  if(dd) dd.style.display='none';
-  document.removeEventListener('click',closeCrewOnOutside);
 }
 function bgClose(e) { if(e.target===document.getElementById('modal-bg')) closeModal(); }
 
@@ -2934,42 +2919,26 @@ function updateColorTrigger() {
 }
 
 // ── CREW ──────────────────────────────────────────────────────────
-function toggleCrewDropdown() {
-  const dd=document.getElementById('crew-dropdown');
-  if(dd.style.display==='none'||!dd.style.display) {
-    dd.style.display='block';
-    renderCrewList('');
-    document.getElementById('crew-search').value='';
-    document.getElementById('crew-search').focus();
-    setTimeout(()=>document.addEventListener('click',closeCrewOnOutside),0);
-  } else { dd.style.display='none'; }
-}
-function closeCrewOnOutside(e) {
-  const wrap=document.getElementById('crew-select-wrap');
-  if(!wrap.contains(e.target)) { document.getElementById('crew-dropdown').style.display='none'; document.removeEventListener('click',closeCrewOnOutside); }
-}
-function renderCrewList(searchTerm) {
-  const list=document.getElementById('crew-list');
-  const filtered=CREW_LIST.filter(c=>c.toLowerCase().includes(searchTerm.toLowerCase()));
-  const checkSvg=`<svg style="margin-left:auto;flex-shrink:0" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`;
-  list.innerHTML=filtered.map(crew=>{
-    const sel=selectedCrew.includes(crew);
-    return `<button type="button" class="crew-option" onclick="event.stopPropagation();toggleCrew('${crew}')"><span class="dot" style="width:8px;height:8px;border-radius:999px;background:var(--accent);flex-shrink:0"></span><span>${crew}</span>${sel?checkSvg:''}</button>`;
+function renderCrewCheckboxes() {
+  const wrap=document.getElementById('crew-checkbox-list');
+  if(!wrap) return;
+  wrap.innerHTML=CREW_LIST.map(name=>{
+    const checked=selectedCrew.includes(name);
+    const hue=nameHue(name);
+    const inits=getCrewInitials(name);
+    return `<label style="display:inline-flex;align-items:center;gap:5px;padding:4px 9px 4px 5px;border-radius:999px;cursor:pointer;border:1px solid ${checked?'oklch(0.60 0.14 255)':'var(--line)'};background:${checked?'oklch(0.94 0.05 255)':'var(--surface)'};font-size:12.5px;font-weight:500;color:${checked?'var(--accent-ink)':'var(--ink-2)'};transition:background 80ms,border 80ms">
+      <input type="checkbox" ${checked?'checked':''} style="display:none" onchange="toggleCrew('${xe(name)}',this.checked)">
+      <div style="width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:700;flex-shrink:0;background:oklch(0.88 0.08 ${hue});border:1px solid oklch(0.76 0.12 ${hue});color:oklch(0.28 0.08 ${hue})">${xe(inits)}</div>
+      ${xe(name.split(' ')[0])}
+    </label>`;
   }).join('');
 }
-function filterCrew() { renderCrewList(document.getElementById('crew-search').value); }
-function toggleCrew(crew) {
-  const idx=selectedCrew.indexOf(crew);
-  if(idx>=0) selectedCrew.splice(idx,1); else selectedCrew.push(crew);
-  updateCrewDisplay();
-  renderCrewList(document.getElementById('crew-search').value);
+function toggleCrew(name, checked) {
+  if(checked) { if(!selectedCrew.includes(name)) selectedCrew.push(name); }
+  else { selectedCrew=selectedCrew.filter(n=>n!==name); }
+  renderCrewCheckboxes();
 }
-function updateCrewDisplay() {
-  const ph=document.getElementById('crew-placeholder');
-  const st=document.getElementById('crew-selected-text');
-  if(selectedCrew.length===0) { if(ph) ph.style.display='inline'; if(st) st.style.display='none'; }
-  else { if(ph) ph.style.display='none'; if(st) { st.style.display='inline'; st.textContent=selectedCrew.join(', '); } }
-}
+function updateCrewDisplay() { renderCrewCheckboxes(); }
 
 // ── UTILS ──────────────────────────────────────────────────────────
 let spinEl=null;
