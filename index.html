@@ -2391,7 +2391,8 @@ function renderList() {
 function renderCrewLegendBar() {
   const bar=document.getElementById('crew-legend-bar');
   if(!bar) return;
-  bar.innerHTML=CREW_LIST.map(name=>{
+  const defSet=getCrewDefaultSet();
+  bar.innerHTML=CREW_LIST.filter(name=>defSet.has(name)).map(name=>{
     const initials=getCrewInitials(name);
     const hue=nameHue(name);
     return `<div class="legend-chip">
