@@ -1370,10 +1370,7 @@ async function loadJobs() {
     allJobs=d.value.map(i=>{return {id:i.id,...i.fields}});
     const refreshEl=document.getElementById('last-refresh');
     if(refreshEl) refreshEl.textContent=new Date().toLocaleString('en-AU',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
-    const unscheduled=allJobs.filter(j=>/fieldwork scheduled/i.test(j.Status||'')).length;
-    const ucEl=document.getElementById('unscheduled-count');
-    const unumEl=document.getElementById('unscheduled-num');
-    if(ucEl&&unumEl){ unumEl.textContent=unscheduled; ucEl.style.display='block'; }
+    loadUnscheduledCount();
     if(currentMode==='list') renderList(); else if(currentMode==='crew') renderCrewGrid(); else renderCal();
   } catch(e) { toast('Error: '+e.message,'error'); }
   spin(false);
@@ -2480,6 +2477,17 @@ function onJobNumberInput(val) {
   jrLookupTimer=setTimeout(()=>lookupJobRegister(v),600);
 }
 
+async function loadUnscheduledCount() {
+  try {
+    const sid=await getSite();
+    const filter=encodeURIComponent("fields/Status eq 'Fieldwork to be booked'");
+    const res=await gfetch('GET',`/sites/${sid}/lists/${REGISTER_LIST}/items?$expand=fields&$select=id,fields/Status&$filter=${filter}&$top=999`);
+    const count=(res.value||[]).length;
+    const ucEl=document.getElementById('unscheduled-count');
+    const unumEl=document.getElementById('unscheduled-num');
+    if(ucEl&&unumEl){ unumEl.textContent=count; ucEl.style.display=count>0?'block':'none'; }
+  } catch(e) { console.warn('loadUnscheduledCount:',e.message); }
+}
 async function fetchRegisterItems(sid) {
   const res=await gfetch('GET',`/sites/${sid}/lists/${REGISTER_LIST}/items?$expand=fields&$top=2000&$select=id,fields`);
   return res.value||[];
