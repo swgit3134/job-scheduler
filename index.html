@@ -2057,6 +2057,7 @@ async function renderCrewTab() {
           <span class="item-label">${xe(name)}</span>
           <input class="crew-init-input" type="text" value="${xe(shortName)}"
             placeholder="—" title="Short display name (optional)"
+            style="width:100%;text-align:left;font-weight:500;letter-spacing:0;text-transform:none"
             onchange="saveShortName('${xe(spId)}','${xe(name)}',this.value)">
           <input class="crew-init-input" type="text" maxlength="2" value="${xe(custom)}"
             placeholder="${xe(auto)}" title="Custom initials"
