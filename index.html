@@ -1364,6 +1364,8 @@ async function gfetch(method,path,body) {
   return r.status===204?{}:r.json();
 }
 async function getSite() { if(!siteId) siteId=(await gfetch('GET',`/sites/${SITE_URL}`)).id; return siteId; }
+let _spCrewDefaults=null; // defaults loaded from SharePoint column description
+
 async function loadFieldMap() {
   try {
     const sid=await getSite();
@@ -1372,11 +1374,17 @@ async function loadFieldMap() {
       fieldMap[c.displayName.toLowerCase()]=c.name;
       if(c.displayName==='Crew'&&c.choice?.choices?.length>0) {
         crewColumnId=c.id;
-        // Only use SP choices as the source of truth if no local list is saved
-        // (local list wins so admin add/remove persists)
         if(!localStorage.getItem('crewOrder')) {
           CREW_LIST=c.choice.choices.filter(Boolean).sort();
         }
+        // Read shared crew defaults from column description
+        try {
+          const d=JSON.parse(c.description||'null');
+          if(Array.isArray(d)&&d.length) {
+            _spCrewDefaults=new Set(d);
+            localStorage.setItem('crewDefaults',JSON.stringify(d));
+          }
+        } catch(e){}
       }
     });
   } catch(e) { console.warn('loadFieldMap:',e.message); }
@@ -1953,19 +1961,32 @@ async function seedVicHolidays() {
 }
 // ── Manage Crew ──
 function getCrewDefaultSet() {
+  if(_spCrewDefaults) return _spCrewDefaults;
   try {
     const d=JSON.parse(localStorage.getItem('crewDefaults')||'null');
-    if(Array.isArray(d)) return new Set(d);
+    if(Array.isArray(d)&&d.length) return new Set(d);
   } catch(e){}
   return new Set(CREW_LIST); // all visible by default if never set
+}
+async function saveCrewDefaultsToSP(arr) {
+  localStorage.setItem('crewDefaults',JSON.stringify(arr));
+  _spCrewDefaults=new Set(arr);
+  if(crewColumnId) {
+    try {
+      const sid=await getSite();
+      await gfetch('PATCH',`/sites/${sid}/lists/${LIST_NAME}/columns/${crewColumnId}`,{description:JSON.stringify(arr)});
+    } catch(e) { console.warn('Could not save crew defaults to SP:',e.message); }
+  }
 }
 function toggleCrewDefault(name) {
   const s=getCrewDefaultSet();
   if(s.has(name)) s.delete(name); else s.add(name);
-  localStorage.setItem('crewDefaults',JSON.stringify([...s]));
+  const arr=[...s];
+  saveCrewDefaultsToSP(arr);
   // also update live hiddenCrew
   if(s.has(name)) hiddenCrew.delete(name); else hiddenCrew.add(name);
   renderCrewTab();
+  renderCrewLegendBar();
 }
 async function renderCrewTab() {
   const el=document.getElementById('admin-panel-content');
@@ -2093,9 +2114,9 @@ function onSearchInput() {
   if(currentMode==='list') renderList(); else if(currentMode==='crew') renderCrewGrid(); else renderCal();
 }
 function persistHiddenCrew() {
-  // Save visible set as crewDefaults so it survives refresh
   const visible=CREW_LIST.filter(n=>!hiddenCrew.has(n));
-  try { localStorage.setItem('crewDefaults',JSON.stringify(visible)); } catch(e){}
+  saveCrewDefaultsToSP(visible);
+  renderCrewLegendBar();
 }
 function toggleCrewMember(name) {
   if(hiddenCrew.has(name)) hiddenCrew.delete(name); else hiddenCrew.add(name);
