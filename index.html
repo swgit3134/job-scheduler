@@ -1399,6 +1399,9 @@ async function loadStaffDirectory() {
     _spCrewDefaults=new Set(defaultNames);
     try { localStorage.setItem('crewDefaults',JSON.stringify(defaultNames)); } catch(e){}
 
+    // Sync hiddenCrew from SP defaults so all users see the same initial view
+    hiddenCrew=new Set(names.filter(n=>!_spCrewDefaults.has(n)));
+
   } catch(e) { console.warn('StaffDirectory load failed:',e.message); }
 }
 
@@ -1413,12 +1416,20 @@ async function loadFieldMap() {
         if(!localStorage.getItem('crewOrder')) {
           CREW_LIST=c.choice.choices.filter(Boolean).sort();
         }
-        // Read shared crew defaults from column description
+        // Read shared crew defaults + initials from column description
         try {
-          const d=JSON.parse(c.description||'null');
-          if(Array.isArray(d)&&d.length) {
-            _spCrewDefaults=new Set(d);
-            localStorage.setItem('crewDefaults',JSON.stringify(d));
+          const raw=JSON.parse(c.description||'null');
+          let defaults=null, initialsMap={};
+          if(Array.isArray(raw)) { defaults=raw; } // legacy format
+          else if(raw&&typeof raw==='object') { defaults=raw.d||null; initialsMap=raw.i||{}; }
+          if(Array.isArray(defaults)&&defaults.length) {
+            _spCrewDefaults=new Set(defaults);
+            localStorage.setItem('crewDefaults',JSON.stringify(defaults));
+          }
+          // SP initials are source of truth — overwrite local cache
+          if(Object.keys(initialsMap).length) {
+            localStorage.setItem('crewInitials',JSON.stringify(initialsMap));
+            _crewInitialsCache=initialsMap;
           }
         } catch(e){}
       }
@@ -2010,7 +2021,9 @@ async function saveCrewDefaultsToSP(arr) {
   if(crewColumnId) {
     try {
       const sid=await getSite();
-      await gfetch('PATCH',`/sites/${sid}/lists/${LIST_NAME}/columns/${crewColumnId}`,{description:JSON.stringify(arr)});
+      const initials=JSON.parse(localStorage.getItem('crewInitials')||'{}');
+      await gfetch('PATCH',`/sites/${sid}/lists/${LIST_NAME}/columns/${crewColumnId}`,
+        {description:JSON.stringify({d:arr,i:initials})});
     } catch(e) { console.warn('Could not save crew defaults to SP:',e.message); }
   }
 }
@@ -2311,6 +2324,16 @@ function saveCrewInitial(name,value) {
   renderCrewLegendBar();
   if(currentMode==='grid') renderCal();
   else if(currentMode==='crew') renderCrewGrid();
+  saveInitialsToSP(map);
+}
+async function saveInitialsToSP(initialsMap) {
+  if(!crewColumnId) return;
+  try {
+    const sid=await getSite();
+    const defaults=[...(getCrewDefaultSet())];
+    await gfetch('PATCH',`/sites/${sid}/lists/${LIST_NAME}/columns/${crewColumnId}`,
+      {description:JSON.stringify({d:defaults,i:initialsMap||{}})});
+  } catch(e) { console.warn('saveInitialsToSP:',e.message); }
 }
 function renderCrewGrid() {
   const grid=document.getElementById('crew-grid');
