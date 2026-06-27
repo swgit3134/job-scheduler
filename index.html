@@ -2238,7 +2238,7 @@ function renderCrewGrid() {
         const jobno=xe(j.JobNumber||'');
         const machine=xe((j.Machine||'').replace(/\bgeoprobe\s+v[34]\b/i,'GEOPROBE'));
         const crewSrcCG=j.CrewText||j.Crew||'';
-        const crewArrCG=(Array.isArray(crewSrcCG)?crewSrcCG:crewSrcCG.split(/;#|;|,/).map(c=>c.trim())).filter(Boolean);
+        const crewArrCG=(Array.isArray(crewSrcCG)?crewSrcCG:crewSrcCG.split(/;#|;|,/).map(c=>c.trim())).filter(Boolean).filter(n=>n!==person);
         const crewInitsCG=crewArrCG.length?`<span class="crew-initials">${crewArrCG.map(n=>`<span class="crew-init" style="--person-hue:${nameHue(n)}" title="${xe(n)}">${xe(getCrewInitials(n))}</span>`).join('')}</span>`:'';
         h+=`<div class="job${noAccess}" data-jobid="${j.id}" data-color="${colorSlug}" data-status="${statusSlug}">`;
         h+=`<div class="job-head"><span class="job-no">${jobno}</span>${crewInitsCG}</div>`;
