@@ -161,7 +161,7 @@ button { font:inherit; color:inherit; cursor:pointer; }
   padding:7px 20px; background:var(--bg); border-bottom:1px solid var(--line-2);
   gap:14px; flex-shrink:0;
 }
-.subbar-left { display:flex; align-items:center; gap:6px; font-size:12.5px; color:var(--ink-3); }
+.subbar-left { display:flex; align-items:center; gap:6px; font-size:12.5px; color:var(--ink-3); flex:1; min-width:0; overflow:hidden; }
 .subbar-left .crumb { color:var(--ink-2); font-weight:500; }
 .subbar-right { display:flex; align-items:center; gap:8px; }
 .search {
@@ -553,8 +553,7 @@ button { font:inherit; color:inherit; cursor:pointer; }
 /* ---------- Crew legend bar ---------- */
 #crew-legend-bar {
   display:flex; align-items:center; gap:4px;
-  padding:5px 20px; background:var(--bg); border-bottom:1px solid var(--line-2);
-  overflow-x:auto; flex-shrink:0; scrollbar-width:none;
+  overflow-x:auto; flex-shrink:1; min-width:0; scrollbar-width:none;
 }
 #crew-legend-bar::-webkit-scrollbar { display:none; }
 .legend-chip {
@@ -867,7 +866,9 @@ button { font:inherit; color:inherit; cursor:pointer; }
     <div class="subbar-left">
       <span class="crumb">Schedule</span>
       <span style="color:var(--ink-3);opacity:0.5">/</span>
-      <span id="month-label-sub" style="color:var(--ink-3)">…</span>
+      <span id="month-label-sub" style="color:var(--ink-3);white-space:nowrap">…</span>
+      <span style="color:var(--line-strong);opacity:0.4;padding:0 4px">|</span>
+      <div id="crew-legend-bar"></div>
     </div>
     <div class="subbar-right">
       <button class="chip-btn" id="filter-btn" onclick="toggleFilter()" title="Show scheduled jobs only">
@@ -912,9 +913,6 @@ button { font:inherit; color:inherit; cursor:pointer; }
       </div>
     </div>
   </div>
-
-  <!-- Crew legend bar -->
-  <div id="crew-legend-bar"></div>
 
   <!-- Schedule -->
   <div class="schedule-wrap" id="schedule-wrap" style="display:block">
