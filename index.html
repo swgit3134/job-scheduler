@@ -2040,7 +2040,7 @@ async function renderCrewTab() {
     <div style="font-size:11.5px;color:var(--ink-3);padding:0 0 10px 0">
       Managed via StaffDirectory list. <b>Field Crew</b> = appears in job booking dropdown. <b>My Schedule</b> = shown by default in schedule view.
     </div>
-    <div style="display:grid;grid-template-columns:1fr 90px 52px 72px 84px;gap:6px;align-items:center;padding:0 12px 6px;font-size:10.5px;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;color:var(--ink-3)">
+    <div style="display:grid;grid-template-columns:1fr 130px 52px 72px 84px;gap:6px;align-items:center;padding:0 12px 6px;font-size:10.5px;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;color:var(--ink-3)">
       <span>Name</span><span>Short Name</span><span style="text-align:center">Initials</span><span style="text-align:center">Field Crew</span><span style="text-align:center">My Schedule</span>
     </div>
     <div class="admin-list">
@@ -2053,7 +2053,7 @@ async function renderCrewTab() {
         const displayName=shortName||name;
         const auto=nameInitials(displayName);
         const custom=initMap[displayName]||initMap[name]||'';
-        return `<div class="admin-list-item" style="display:grid;grid-template-columns:1fr 90px 52px 72px 84px;gap:6px;align-items:center;padding:6px 12px">
+        return `<div class="admin-list-item" style="display:grid;grid-template-columns:1fr 130px 52px 72px 84px;gap:6px;align-items:center;padding:6px 12px">
           <span class="item-label">${xe(name)}</span>
           <input class="crew-init-input" type="text" value="${xe(shortName)}"
             placeholder="—" title="Short display name (optional)"
