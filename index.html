@@ -248,6 +248,10 @@ button { font:inherit; color:inherit; cursor:pointer; }
 .day-head.holiday { background:oklch(0.97 0.03 28); }
 .day-head.holiday .dow { color:oklch(0.50 0.15 28); }
 .day-head.holiday .dom { color:oklch(0.40 0.16 28); }
+.unalloc-badge {
+  font-size:8.5px; font-weight:600; margin-top:2px; white-space:nowrap;
+  color:oklch(0.45 0.12 155); letter-spacing:0.02em;
+}
 .day-head .ph-label {
   font-size:9px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase;
   color:oklch(0.50 0.15 28); margin-top:2px; white-space:nowrap; overflow:hidden;
@@ -1547,6 +1551,10 @@ function renderCal() {
 
   let h='';
 
+  // Default visible crew for unallocated count
+  const defCrewSet=getCrewDefaultSet();
+  const defaultCrew=CREW_LIST.filter(n=>defCrewSet.has(n));
+
   // Header row
   h+=`<div class="day-header-row" style="grid-template-columns:${colTpl}">`;
   h+=`<div class="corner">SCHEDULE</div>`;
@@ -1554,7 +1562,16 @@ function renderCal() {
     const firstOfWeek=d._weekIndex>0&&i%5===0;
     const ph=isHoliday(d);
     const cls=['day-head',isToday(d)?'today':'',firstOfWeek?'week-start':'',ph?'holiday':''].filter(Boolean).join(' ');
-    h+=`<div class="${cls}"><div class="dow">${DAYS[d.getDay()]}</div><div class="dom">${d.getDate()}<span class="mo">${MONTHS[d.getMonth()]}</span></div>${ph?`<div class="ph-label">${ph}</div>`:''}</div>`;
+    const ds=fdate(d);
+    const allocatedCrew=new Set();
+    allJobs.forEach(j=>{
+      if(!jobOnDate(j,d)) return;
+      const src=j.CrewText||j.Crew||'';
+      (Array.isArray(src)?src:src.split(/;#|;|,/).map(c=>c.trim())).filter(Boolean).forEach(n=>allocatedCrew.add(n));
+    });
+    const unallocCount=defaultCrew.filter(n=>!allocatedCrew.has(n)).length;
+    const unallocBadge=defaultCrew.length>0?`<div class="unalloc-badge" title="${unallocCount} of ${defaultCrew.length} crew unallocated">${unallocCount} free</div>`:'';
+    h+=`<div class="${cls}"><div class="dow">${DAYS[d.getDay()]}</div><div class="dom">${d.getDate()}<span class="mo">${MONTHS[d.getMonth()]}</span></div>${ph?`<div class="ph-label">${ph}</div>`:unallocBadge}</div>`;
   });
   h+=`</div>`;
 
