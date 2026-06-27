@@ -1635,13 +1635,13 @@ function renderCal() {
     const ph=isHoliday(d);
     const cls=['day-head',isToday(d)?'today':'',firstOfWeek?'week-start':'',ph?'holiday':''].filter(Boolean).join(' ');
     const ds=fdate(d);
-    const allocatedCrew=new Set();
+    const jobCrewOnDay=[];
     allJobs.forEach(j=>{
       if(!jobOnDate(j,d)) return;
       const src=j.CrewText||j.Crew||'';
-      (Array.isArray(src)?src:src.split(/;#|;|,/).map(c=>c.trim())).filter(Boolean).forEach(n=>allocatedCrew.add(n));
+      (Array.isArray(src)?src:src.split(/;#|;|,/).map(c=>c.trim())).filter(Boolean).forEach(n=>jobCrewOnDay.push(n));
     });
-    const unallocCount=defaultCrew.filter(n=>!allocatedCrew.has(n)).length;
+    const unallocCount=defaultCrew.filter(name=>!jobCrewOnDay.some(c=>crewNameMatch(c,name))).length;
     const unallocBadge=defaultCrew.length>0?`<div class="unalloc-badge" title="${unallocCount} of ${defaultCrew.length} crew unallocated">${unallocCount} Available</div>`:'';
     h+=`<div class="${cls}"><div class="dow">${DAYS[d.getDay()]}</div><div class="dom">${d.getDate()}<span class="mo">${MONTHS[d.getMonth()]}</span></div>${ph?`<div class="ph-label">${ph}</div>`:unallocBadge}</div>`;
   });
@@ -2708,7 +2708,7 @@ function checkCrewConflicts(crew, machine, sdStr, edStr) {
       if(jMachineLower===machineLower) return; // same machine — OK
       const src=j.CrewText||j.Crew||'';
       const jCrew=(Array.isArray(src)?src:src.split(/;#|;|,/).map(c=>c.trim())).filter(Boolean);
-      if(!jCrew.includes(person)) return;
+      if(!jCrew.some(c=>crewNameMatch(c,person))) return;
       // Find overlapping dates
       const jStart=j.Start_x0020_Date?j.Start_x0020_Date.split('T')[0]:null;
       const jEnd=j.End_x0020_Date?j.End_x0020_Date.split('T')[0]:jStart;
