@@ -2229,6 +2229,16 @@ document.addEventListener('click',function(e){
 function nameHue(name) {
   let h=0; for(const c of name) h=(h*31+c.charCodeAt(0))%360; return h;
 }
+// Match a crew entry in a job against a (possibly full) person name.
+// Handles legacy short names: "Phil" matches "Phil Burgess", "Cotter" matches "Matt Cotter".
+function crewNameMatch(jobEntry, personName) {
+  const j=jobEntry.trim().toLowerCase();
+  const p=personName.trim().toLowerCase();
+  if(j===p) return true;
+  const parts=p.split(/\s+/);
+  // jobEntry is first name or last name of personName
+  return parts.some(part=>j===part);
+}
 function nameInitials(name) {
   const p=name.trim().split(/\s+/);
   return p.length===1?p[0].slice(0,2).toUpperCase():(p[0][0]+p[p.length-1][0]).toUpperCase();
@@ -2282,7 +2292,7 @@ function renderCrewGrid() {
         if(!jobOnDate(j,d)) return false;
         const src=j.CrewText||j.Crew||'';
         const crew=Array.isArray(src)?src:src.split(/;#|;|,/).map(c=>c.trim()).filter(Boolean);
-        return crew.some(c=>c===name);
+        return crew.some(c=>crewNameMatch(c,name));
       }).length;
       if(cnt>mx) mx=cnt;
     });
@@ -2328,7 +2338,7 @@ function renderCrewGrid() {
         if(!jobOnDate(j,d)) return false;
         const src=j.CrewText||j.Crew||'';
         const crew=Array.isArray(src)?src:src.split(/;#|;|,/).map(c=>c.trim()).filter(Boolean);
-        if(!crew.some(c=>c===person)) return false;
+        if(!crew.some(c=>crewNameMatch(c,person))) return false;
         if(searchTerm) {
           const jn=(j.JobNumber||'').toLowerCase();
           const sub=(j.Suburb||'').toLowerCase();
@@ -2349,7 +2359,7 @@ function renderCrewGrid() {
         const jobno=xe(j.JobNumber||'');
         const machine=xe((j.Machine||'').replace(/\bgeoprobe\s+v[34]\b/i,'GEOPROBE'));
         const crewSrcCG=j.CrewText||j.Crew||'';
-        const crewArrCG=(Array.isArray(crewSrcCG)?crewSrcCG:crewSrcCG.split(/;#|;|,/).map(c=>c.trim())).filter(Boolean).filter(n=>n!==person);
+        const crewArrCG=(Array.isArray(crewSrcCG)?crewSrcCG:crewSrcCG.split(/;#|;|,/).map(c=>c.trim())).filter(Boolean).filter(n=>!crewNameMatch(n,person));
         const crewInitsCG=crewArrCG.length?`<span class="crew-initials">${crewArrCG.map(n=>`<span class="crew-init" style="--person-hue:${nameHue(n)}" title="${xe(n)}">${xe(getCrewInitials(n))}</span>`).join('')}</span>`:'';
         h+=`<div class="job${noAccess}" data-jobid="${j.id}" data-color="${colorSlug}" data-status="${statusSlug}">`;
         h+=`<div class="job-head"><span class="job-no">${jobno}</span>${crewInitsCG}</div>`;
