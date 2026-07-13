@@ -286,6 +286,9 @@ button { font:inherit; color:inherit; cursor:pointer; }
 .job.past { cursor:default; opacity:0.72; filter:grayscale(18%); }
 .job.past:hover { filter:grayscale(18%) brightness(0.96); box-shadow:none; }
 .job.past .job-copy { display:none !important; }
+/* Admin can click past jobs to edit them */
+body.is-admin .job.past { cursor:pointer; opacity:0.82; }
+body.is-admin .job.past:hover { filter:grayscale(10%) brightness(0.97); box-shadow:0 1px 4px oklch(0 0 0/.12); }
 .job .job-head { display:flex; align-items:center; gap:4px; min-width:0; }
 .job .job-no { font-family:var(--font-mono); font-size:10px; font-weight:700; color:var(--c-ink); letter-spacing:-0.01em; white-space:nowrap; flex-shrink:0; }
 .job .job-suburb { font-size:9.5px; font-weight:400; color:var(--c-ink); opacity:0.72; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; line-height:1.2; }
@@ -1732,14 +1735,14 @@ function renderCal() {
   grid.onclick=function(e) {
     if(isMobileView()) return;
     const card=e.target.closest('.job');
-    if(card) { e.stopPropagation(); if(!card.classList.contains('past')) { const id=card.dataset.jobid; if(id) openEdit(id); } return; }
+    if(card) { e.stopPropagation(); if(!card.classList.contains('past')||isAdmin) { const id=card.dataset.jobid; if(id) openEdit(id); } return; }
     const cell=e.target.closest('.day-cell');
     if(cell&&!cell.dataset.holiday) openNew(cell.dataset.machine||'',cell.dataset.date||'');
   };
   grid.ondragstart=function(e) {
     if(isMobileView()) { e.preventDefault(); return; }
     const card=e.target.closest('.job');
-    if(!card||e.target.closest('.job-copy')||card.classList.contains('past')) { e.preventDefault(); return; }
+    if(!card||e.target.closest('.job-copy')||(card.classList.contains('past')&&!isAdmin)) { e.preventDefault(); return; }
     draggingJobId=card.dataset.jobid;
     const srcCell=card.closest('.day-cell');
     draggingFromDate=srcCell?.dataset.date;
@@ -1842,6 +1845,7 @@ async function checkAdminStatus() {
     const res=await gfetch('GET',`/sites/${sid}/lists/${ADMINS_LIST}/items?expand=fields&$top=500&$select=fields`);
     const emails=(res.value||[]).map(i=>(i.fields?.Title||'').toLowerCase().trim());
     isAdmin=emails.includes(currentUserEmail);
+    document.body.classList.toggle('is-admin',isAdmin);
     const btn=document.getElementById('admin-btn');
     if(btn) btn.classList.toggle('visible',isAdmin);
   } catch(e) { console.warn('Admin check failed:',e.message); }
