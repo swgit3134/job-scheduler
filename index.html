@@ -2708,6 +2708,20 @@ function matchRegisterItem(items, jobNum) {
         || (f.Job_x0020_Number||'').toLowerCase()===q;
   })||null;
 }
+// Strip trailing suffix (e.g. "31965-SS" → "31965", "31965-CR" → "31965")
+function getBaseJobNumber(jobNum) {
+  return (jobNum||'').trim().replace(/[-_][A-Za-z0-9]+$/, '').toLowerCase();
+}
+// Find all register items that share the same base job number
+function matchRelatedRegisterItems(items, jobNum) {
+  const base=getBaseJobNumber(jobNum);
+  if(!base) return [];
+  return items.filter(i=>{
+    const f=i.fields||{};
+    const num=(f.Title||f.JobNumber||f.Job_x0020_Number||'').trim();
+    return getBaseJobNumber(num)===base;
+  });
+}
 async function lookupJobRegister(jobNum) {
   const el=document.getElementById('jr-status');
   try {
@@ -2736,19 +2750,22 @@ async function updateRegisterStatus(jobNum, status, onlyIfStatus=null) {
   if(!jobNum) return;
   try {
     const sid=await getSite();
-    // Use cached item ID from lookup when available
-    let itemId=jrFoundId;
-    let currentStatus=null;
-    if(!itemId||onlyIfStatus) {
-      const items=await fetchRegisterItems(sid);
-      const item=matchRegisterItem(items,jobNum);
-      if(!item) { console.warn('JobsRegister: item not found for',jobNum); return; }
-      itemId=item.id;
-      currentStatus=item.fields?.Status||'';
+    const items=await fetchRegisterItems(sid);
+    // Find all Jobs Register entries sharing the same base number (e.g. 31965, 31965-SS, 31965-CR)
+    const related=matchRelatedRegisterItems(items, jobNum);
+    if(!related.length) { console.warn('JobsRegister: no items found for base of',jobNum); return; }
+    let updated=0;
+    for(const item of related) {
+      const currentStatus=(item.fields?.Status||'').trim();
+      if(onlyIfStatus && currentStatus!==onlyIfStatus) {
+        console.log(`JobsRegister: skipped "${item.fields?.Title||item.id}" (status is "${currentStatus}", expected "${onlyIfStatus}")`);
+        continue;
+      }
+      await gfetch('PATCH',`/sites/${sid}/lists/${REGISTER_LIST}/items/${item.id}/fields`,{Status:status});
+      console.log(`JobsRegister: "${item.fields?.Title||item.id}" → "${status}"`);
+      updated++;
     }
-    if(onlyIfStatus&&currentStatus!==onlyIfStatus) return;
-    await gfetch('PATCH',`/sites/${sid}/lists/${REGISTER_LIST}/items/${itemId}/fields`,{Status:status});
-    console.log(`JobsRegister status updated to "${status}" for ${jobNum}`);
+    if(updated>1) toast(`${updated} related jobs updated in Register ✓`);
   } catch(e) { console.warn('Could not update JobsRegister status:',e.message); }
 }
 
